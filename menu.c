@@ -26,20 +26,18 @@
 #define DESC_LEN    1024
 #define CMD_LEN    10
 #define CMD_NUM    10
-void Init();
-void SelectCmd(char * cmd);
 typedef struct DataNode
 {
     char     cmd[CMD_LEN];
     char    desc[DESC_LEN];
     struct  DataNode *next;
 } tDataNode;
-char * list[10]={"zero","one","two","three","four","five","six","seven","eight","nine"};
-tDataNode *head = NULL; 
-tDataNode * p = NULL;
+tDataNode * Init(tDataNode * head);
+tDataNode * SelectCmd(tDataNode * head,char * cmd);
 int main()
 {   
-    Init();
+    tDataNode * head = NULL; 
+    head=Init(head);
     while(1)
     {
         char cmd[CMD_LEN];
@@ -49,14 +47,22 @@ int main()
         {
             return 0;
         }
-        SelectCmd(cmd);
+        tDataNode *p =SelectCmd(head,cmd);
+        if( p == NULL)
+        {
+            printf("This is a wrong cmd!\n");
+            continue;
+        }
+        printf("%s - %s\n", p->cmd, p->desc); 
     }
 }
-void Init()
+tDataNode * Init(tDataNode * head)
 {
     
     /* Init cmd list */
     int i;
+    char * list[10]={"zero","one","two","three","four","five","six","seven","eight","nine"};
+    tDataNode * p=NULL;
     for (i=0; i<CMD_NUM; i++)
     {
         printf("%s",list[i]);
@@ -74,22 +80,19 @@ void Init()
         p = p->next;
     }
     printf("exit - exit program!\n");
+    return head;
 }
-void SelectCmd(char * cmd)
+tDataNode * SelectCmd(tDataNode * head,char * cmd)
 {
     /* cmd line begins */
-    p = head;
+    tDataNode * p = head;
     while(p != NULL)
     {
         if(strcmp(p->cmd,cmd)==0)
         {
-            printf("%s - %s\n", p->cmd, p->desc);
-            break;
+            return p;
         }
         p = p->next;
     }
-    if(!p)
-    {
-        printf("This is a wrong cmd string!\n ");
-    }
+    return NULL;
 }
