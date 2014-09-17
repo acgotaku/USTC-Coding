@@ -32,6 +32,7 @@ int Quit();
 #define CMD_NUM    10
 typedef struct DataNode
 {
+    tLinkTableNode * pNext;
     char     cmd[CMD_LEN];
     char    desc[DESC_LEN];
     struct  DataNode *next;
@@ -75,10 +76,11 @@ void Init(tLinkTable ** head)
     {
         p = (tDataNode*)malloc(sizeof(tDataNode));
         snprintf(p->cmd, CMD_LEN, "%s", list[i]);
-        printf("%s\n",p->cmd);
+        
         snprintf(p->desc, DESC_LEN, "This is %s cmd!", list[i]);
+        printf("%p\n",p->cmd);
         AddLinkTableNode(*head,(tLinkTableNode *)p);
-        printf("%s\n",p->cmd);
+        printf("%p\n",p->cmd);
     }
 }
 tDataNode * SelectCmd(tLinkTable * head,char * cmd)
