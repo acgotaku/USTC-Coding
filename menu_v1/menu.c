@@ -76,11 +76,8 @@ void Init(tLinkTable ** head)
     {
         p = (tDataNode*)malloc(sizeof(tDataNode));
         snprintf(p->cmd, CMD_LEN, "%s", list[i]);
-        
         snprintf(p->desc, DESC_LEN, "This is %s cmd!", list[i]);
-        printf("%p\n",p->cmd);
         AddLinkTableNode(*head,(tLinkTableNode *)p);
-        printf("%p\n",p->cmd);
     }
 }
 tDataNode * SelectCmd(tLinkTable * head,char * cmd)
