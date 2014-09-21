@@ -1,89 +1,59 @@
 
-/**************************************************************************************************/
-/* Copyright (C) icehoney.me, WB@USTC, 2014-2015                                                  */
-/*                                                                                                */
-/*  FILE NAME             :  menu.c                                                               */
-/*  PRINCIPAL AUTHOR      :  WangBiao                                                             */
-/*  SUBSYSTEM NAME        :  menu                                                                 */
-/*  MODULE NAME           :  menu                                                                 */
-/*  LANGUAGE              :  C                                                                    */
-/*  TARGET ENVIRONMENT    :  ANY                                                                  */
-/*  DATE OF FIRST RELEASE :  2014/09/08                                                           */
-/*  DESCRIPTION           :  This is a menu program                                               */
-/**************************************************************************************************/
+/********************************************************************/
+/* Copyright (C) SSE-USTC, 2012-2013                                */
+/*                                                                  */
+/*  FILE NAME             :  menu.c                                 */
+/*  PRINCIPAL AUTHOR      :  WangBiao                               */
+/*  SUBSYSTEM NAME        :  Menu                                   */
+/*  MODULE NAME           :  LinkTable                              */
+/*  LANGUAGE              :  C                                      */
+/*  TARGET ENVIRONMENT    :  ANY                                    */
+/*  DATE OF FIRST RELEASE :  2014/09/12                             */
+/*  DESCRIPTION           :  interface of Menu                      */
+/********************************************************************/
 
 /*
  * Revision log:
  *
- * Created by WangBiao, 2014/09/08
+ * Created by WangBiao,2014/09/21
  *
  */
 
+#include<stdio.h>
+#include<stdlib.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "linktable.h"
+#include"menu.h"
 
-int Help();
-int Quit();
-
-#define DESC_LEN    1024
-#define CMD_LEN    50
-#define CMD_NUM    10
-typedef struct DataNode
-{
-    tLinkTableNode * pNext;
-    char     cmd[CMD_LEN];
-    char    desc[DESC_LEN];
-    struct  DataNode *next;
-} tDataNode;
-void Init(tLinkTable ** head);
-tDataNode * SelectCmd(tLinkTable * head,char * cmd);
-void ShowAllCmd(tLinkTable * head);
-int main()
-{   
-    tLinkTable * head = NULL; 
-    Init(&head);
-    ShowAllCmd(head);
-    while(1)
-    {
-        char cmd[CMD_LEN];
-        printf("Input a cmd string > ");
-        scanf("%s", &cmd);
-        if(strcmp("exit",cmd)==0)
-        {
-            return 0;
-        }
-        tDataNode *p =SelectCmd(head,cmd);
-        if( p == NULL)
-        {
-            printf("This is a wrong cmd!\n");
-            continue;
-        }
-        printf("%s - %s\n", p->cmd, p->desc); 
-    }
-}
-
-void Init(tLinkTable ** head)
+/*
+ * Create a Menu
+ */
+void InitMenu(tLinkTable ** head)
 {
     
     /* Init cmd list */
     *head= CreateLinkTable();
-    int i;
-    char * list[10]={"zero","one","two","three","four","five","six","seven","eight","nine"};
-    tDataNode * p=NULL;
-    for (i=0; i<CMD_NUM; i++)
-    {
-        p = (tDataNode*)malloc(sizeof(tDataNode));
-        snprintf(p->cmd, CMD_LEN, "%s", list[i]);
-        snprintf(p->desc, DESC_LEN, "This is %s cmd!", list[i]);
-        AddLinkTableNode(*head,(tLinkTableNode *)p);
-    }
 }
-tDataNode * SelectCmd(tLinkTable * head,char * cmd)
+/*
+ * Add a MenuItem
+ */
+void AddMenuItem(tLinkTable ** head, tDataNode * p)
+{
+    AddLinkTableNode(*head,(tLinkTableNode *)p);
+}
+/*
+ * Del a MenuItem
+ */
+void DelMenuItem(tLinkTable ** head, tDataNode * p)
+{
+    DelLinkTableNode(*head,(tLinkTableNode *)p);
+}
+/*
+ * Query a Menu
+ */
+tDataNode * QueryItem(tLinkTable * head,char * cmd)
 {
     /* cmd line begins */
-    tDataNode * p = (tDataNode*)GetLinkTableHead(head);;
+    tDataNode * p = (tDataNode*)GetLinkTableHead(head);
     while(p != NULL)
     {
         if(strcmp(p->cmd,cmd)==0)
@@ -94,7 +64,10 @@ tDataNode * SelectCmd(tLinkTable * head,char * cmd)
     }
     return NULL;
 }
-void ShowAllCmd(tLinkTable * head)
+/*
+ * Query a Menu
+ */
+void ShowAllMenu(tLinkTable * head)
 {
     tDataNode * pNode = (tDataNode*)GetLinkTableHead(head);
     while(pNode != NULL)
