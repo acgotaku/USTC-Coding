@@ -26,26 +26,22 @@
 
 #define SUCCESS 0
 #define FAILURE (-1)
-
 /*
  * LinkTable Node Type
  */
 typedef struct LinkTableNode
 {
-    struct LinkTableNode * pNext;
+	struct LinkTableNode * pNext;
 }tLinkTableNode;
 
 /*
  * LinkTable Type
  */
-typedef struct LinkTable
-{
-    tLinkTableNode *pHead;
-    tLinkTableNode *pTail;
-    int			SumOfNode;
-    pthread_mutex_t mutex;
-}tLinkTable;
-
+typedef struct LinkTable tLinkTable;
+/*
+ * LinkTable Node Type
+ */
+ 
 /*
  * Create a LinkTable
  */

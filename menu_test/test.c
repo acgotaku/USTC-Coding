@@ -41,7 +41,7 @@ int main()
         p = (tDataNode*)malloc(sizeof(tDataNode));
         snprintf(p->cmd, CMD_LEN, "%s", list[i]);
         snprintf(p->desc, DESC_LEN, "This is %s cmd!", list[i]);
-        if(AddMenuItemStub(&head,p) == FAILURE)
+        if(AddMenuItem(&head,p) == FAILURE)
         {
             debug("Add Menu Item fail\n");
         }

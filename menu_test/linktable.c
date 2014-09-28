@@ -25,6 +25,15 @@
 
 #include"linktable.h"
 
+struct LinkTable
+{
+    tLinkTableNode *pHead;
+    tLinkTableNode *pTail;
+    int         SumOfNode;
+    pthread_mutex_t mutex;
+
+};
+
 /*
  * Create a LinkTable
  */
