@@ -24,7 +24,14 @@
 #include <stdlib.h>
 #include "menu.h"
 
-#define debug printf
+#define debug 
+int results[3] = {0,0,0};
+char * info[3] =
+{
+    "Init Menu fail",
+    "Add Menu Item fail",
+    "Del Menu Item fail"
+};
 int main()
 {   
     tLinkTable * head = NULL; 
@@ -32,6 +39,7 @@ int main()
     if(head == NULL)
     {
         debug("Init Menu fail\n");
+        results[0] = 1;
     }
     int i;
     char * list[10]={"zero","one","two","three","four","five","six","seven","eight","nine"};
@@ -41,26 +49,25 @@ int main()
         p = (tDataNode*)malloc(sizeof(tDataNode));
         snprintf(p->cmd, CMD_LEN, "%s", list[i]);
         snprintf(p->desc, DESC_LEN, "This is %s cmd!", list[i]);
-        if(AddMenuItem(&head,p) == FAILURE)
+        AddMenuItem(&head,p);
+        if(AddMenuItemStub(&head,p) == FAILURE)
         {
             debug("Add Menu Item fail\n");
+            results[1] = 0;
+        }
+        if(DelMenuItemStub(&head,p) == FAILURE)
+        {
+            debug("Del Menu Item fail\n");
+            results[2] = 0;
         }
     }
-    while(1)
+    /* test report */
+    printf("test report\n");
+    for(i=0;i<=2;i++)
     {
-        char cmd[CMD_LEN];
-        printf("Input a cmd string > ");
-        scanf("%s", &cmd);
-        if(strcmp("exit",cmd)==0)
+        if(results[i] == 0)
         {
-            return 0;
+            printf("Testcase Number%d  - %s\n",i,info[i]);
         }
-        tDataNode *p =QueryItem(head,cmd);
-        if( p == NULL)
-        {
-            printf("This is a wrong cmd!\n");
-            continue;
-        }
-        printf("%s - %s\n", p->cmd, p->desc); 
     }
 }

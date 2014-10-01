@@ -87,6 +87,13 @@ tDataNode * QueryItem(tLinkTable * head,char * cmd)
     return NULL;
 }
 /*
+ * Set Quert  Menu Stub
+ */
+tDataNode * QueryItemStub(tLinkTable * head,char * cmd)
+{
+    return NULL;
+}
+/*
  * Query a Menu
  */
 void ShowAllMenu(tLinkTable * head)
