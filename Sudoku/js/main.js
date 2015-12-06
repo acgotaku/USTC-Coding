@@ -4,6 +4,9 @@
         return {
             init:function(){
                 var self=this;
+                $(".button").on("click",function(){
+                    $(".game-message").removeClass("game-over");
+                });
                 $("#result").on("click",function(){
                     self.getAnswer();
                 });
@@ -87,11 +90,8 @@
             startRecursiveSearch:function(){
                 var start =stack.pop();
                 if(start == null){
-                    console.log("NO Answer");
+                    $(".game-message").addClass("game-over");
                     return ;
-                }
-                if(stack.length == 1){
-                    console.log(stack);
                 }
                 $(".tile-position-"+start.x+"-"+start.y).nextAll().remove();
                 $(".tile-position-"+start.x+"-"+start.y).remove();
