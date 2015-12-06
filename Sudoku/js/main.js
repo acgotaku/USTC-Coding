@@ -20,7 +20,7 @@
                     self.setTableData();
                 });
                 $("#step").on("click",function(){
-                    self.traversalTable();
+                    self.onlyOneStep();
                 });
             },
             setTableData:function(){
@@ -61,6 +61,35 @@
                     self.startRecursiveSearch();
                 }
 
+            },
+            onlyOneStep:function(){
+                var self=this;
+                var data=self.traversalTable();
+                if(data == true){
+                    return ;
+                }else if(typeof data =="object"){
+                    if(data == null){
+                        return ;
+                    }else{
+                        var min_data=data[0];
+                        for(var k=1;k<data.length;k++){
+                            if(data[k].data.length < min_data.data.length){
+                                min_data= data[k];
+                            }
+                        }
+                        for(var i=0;i<min_data.data.length;i++){
+                            stack.push({"x":min_data.x,"y":min_data.y,"data":min_data.data[i]});
+                        }
+                    }
+                }
+                var start =stack.pop();
+                if(start == null){
+                    $(".game-message").addClass("game-over");
+                    return ;
+                }
+                $(".tile-position-"+start.x+"-"+start.y).nextAll().remove();
+                $(".tile-position-"+start.x+"-"+start.y).remove();
+                $("<div>").addClass("tile box-bold tile-position-"+start.x+"-"+start.y).append($("<div>").addClass("tile-inner").text(start.data)).appendTo($(".tile-container"));
             },
             traversalTable:function(){
                 var self=this;
