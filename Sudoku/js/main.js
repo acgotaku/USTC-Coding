@@ -19,6 +19,9 @@
                 $("#filldata").on("click",function(){
                     self.setTableData();
                 });
+                $("#step").on("click",function(){
+                    self.traversalTable();
+                });
             },
             setTableData:function(){
                 $(".tile-container").empty();
