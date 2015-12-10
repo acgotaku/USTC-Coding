@@ -44,7 +44,6 @@
                     self.getAnswer();
                 }else if(typeof data =="object"){
                     if(data == null){
-                        stack=[];
                         return ;
                     }else{
                         var min_data=data[0];
