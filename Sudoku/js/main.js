@@ -37,12 +37,14 @@
                 }
             },
             getAnswer:function(){
+                stack= [];
                 var self=this;
                 var data=self.traversalTable();
                 if(data == true){
                     self.getAnswer();
                 }else if(typeof data =="object"){
                     if(data == null){
+                        stack=[];
                         return ;
                     }else{
                         var min_data=data[0];
