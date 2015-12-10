@@ -8,6 +8,7 @@
                     $(".game-message").removeClass("game-over");
                 });
                 $("#result").on("click",function(){
+                    stack =[];
                     self.getAnswer();
                 });
                 $("#init").on("click",function(){
@@ -37,7 +38,6 @@
                 }
             },
             getAnswer:function(){
-                stack= [];
                 var self=this;
                 var data=self.traversalTable();
                 if(data == true){
