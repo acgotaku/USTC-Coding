@@ -28,6 +28,9 @@
                 $(".tile-container").empty();
                 var data=$("#data").val();
                 var row =data.split("\n");
+                if(row.length < 9){
+                    return;
+                }
                 for(var i=0;i< 9;i++){
                     var cell=row[i];
                     for(var j=0;j<9;j++){
