@@ -1,27 +1,47 @@
-    var run = false;
+    var run = true;
     var c = document.getElementById('canvas');
     c.width = Math.min(window.innerWidth, window.innerHeight);
     c.height = c.width;
+    var VisualizeProgram, Obstacles;
     var gl = c.getContext('webgl');
     var ext;
     ext = gl.getExtension('OES_texture_float') || gl.getExtension('OES_texture_half_float');
     if(ext == null){
         alert('float texture not supported');
     }
-    //VisualizeProgram = CreateProgram("Fluid.Vertex", 0, "Fluid.Visualize");
-    var VisualizeProgram = create_program("Vertex", "Visualize");
-    var Obstacles = CreateSurface(c.width, c.height, 3);
-
-    CreateObstacles(Obstacles,c.width,c.height);
+    Initialize(c.width,c.height);
     render();
     function render(){
+        Update(c.width, c.height);
+        if(run){requestAnimationFrame(render);}
+    }
+    function Initialize(width, height){
+        InitSlabOps();
+        VisualizeProgram = create_program("Vertex", "Visualize");
+        Obstacles = CreateSurface(width, height, 3);
+
+        CreateObstacles(Obstacles,width,height);
+        var QuadVao = CreateQuad();  
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+             
+    }
+    function Update(width, height){
         gl.useProgram(VisualizeProgram);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
-
-        
-       // if(run){requestAnimationFrame(render);}
+        var uniLocation = new Array();
+        uniLocation.push(gl.getUniformLocation(VisualizeProgram, 'FillColor'));
+        uniLocation.push(gl.getUniformLocation(VisualizeProgram, 'Scale'));
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.viewport(0, 0, width, height);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindTexture(gl.TEXTURE_2D, Obstacles.TextureHandle);
+        gl.uniform3fv(uniLocation[0], [0.125, 0.8, 0.75]);
+        gl.uniform2fv(uniLocation[1], [1.0/width, 1.0/height]);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.flush();
     }
-
     function create_ibo(data){
         var ibo = gl.createBuffer();
 
@@ -102,6 +122,25 @@
 
         return vbo;
     }
+    function Programs(){
+        var object={};
+        object.Advect = null;
+        object.Jacobi = null;
+        object.SubtractGradient = null;
+        object.ComputeDivergence = null;
+        object.ApplyImpulse = null;
+        object.ApplyBuoyancy = null;
+        return object;
+    }
+    function InitSlabOps(){
+        Programs =Programs();
+        Programs.Advect = create_program("Vertex", "Advect");
+        Programs.Jacobi = create_program("Vertex", "Jacobi");
+        Programs.SubtractGradient = create_program("Vertex", "SubtractGradient");
+        Programs.ComputeDivergence = create_program("Vertex", "ComputeDivergence");
+        Programs.ApplyImpulse = create_program("Vertex", "Splat");
+        Programs.ApplyBuoyancy = create_program("Vertex", "Buoyancy");
+    }
     //CreateSlab.c
     function Surface(FboHandle, TextureHandle, NumComponents){
         var object={};
@@ -122,6 +161,11 @@
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         return surface;
+    }
+    function ClearSurface(s, v){
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.FboHandle);
+        gl.clearColor(v, v, v, v);
+        gl.clear(gl.COLOR_BUFFER_BIT);
     }
     function CreateSlab(width, height, numComponents){
         var slab = Slab();
@@ -226,11 +270,11 @@
         AttStride.push(2);
         //-1,-1,1,-1,1,1,-1,1,-1,-1
         var Lposition =[
-                -1.0,-1.0, 
-                 1.0,-1.0,
-                 1.0, 1.0,
-                -1.0, 1.0,
-                -1.0,-1.0
+                -0.9999,-0.9999, 
+                 0.9999,-0.9999,
+                 0.9999, 0.9999,
+                -0.9999, 0.9999,
+                -0.9999,-0.9999
         ];
         //position= circle({x:0,y:0}, 0.4, 100);
         var vPlane = create_vbo(Lposition);
@@ -250,6 +294,7 @@
         var circleVBOList = [vCircle];
         set_attribute(circleVBOList, AttLocation, AttStride);
         gl.drawArrays(gl.TRIANGLE_FAN, 0, Cposition.length / 2);
+        gl.disable(gl.BLEND);
         gl.deleteBuffer(vCircle);
         gl.deleteProgram(Prg);
 
