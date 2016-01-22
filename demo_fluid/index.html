@@ -133,14 +133,6 @@
             uniform vec2 Scale;
             void main(){
                 vec2 T = vec2(gl_FragCoord.xy);
-/*
-                float pN = texture2D(Pressure, vec2(T.x,T.y+1.0)* Scale).r;
-                float pS = texture2D(Pressure, vec2(T.x,T.y-1.0)* Scale).r;
-                float pE = texture2D(Pressure, vec2(T.x+1.0,T.y)* Scale).r;
-                float pW = texture2D(Pressure, vec2(T.x-1.0,T.y)* Scale).r;
-                float pC = texture2D(Pressure, vec2(T.x,T.y)* Scale).r;
-
-*/
                 // Find neighboring velocities:
                 vec2 vN = texture2D(Velocity, vec2(T.x,T.y+1.0)* Scale).xy;
                 vec2 vS = texture2D(Velocity, vec2(T.x,T.y-1.0)* Scale).xy;
