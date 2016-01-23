@@ -14,7 +14,7 @@
         <script id="Fill" type="x-shader/x-fragment">  
             precision mediump float;
             void main(void){
-                gl_FragColor  = vec4(1, 0, 0, 0);
+                gl_FragColor  = vec4(1.0, 0.0, 0.0, 1.0);
             } 
         </script>  
 
@@ -92,7 +92,7 @@
 
                 vec3 oC = texture2D(Obstacles, vec2(T.x,T.y)* Scale).xyz;
                 if (oC.x > 0.0) {
-                    gl_FragColor = vec4(oC.yz, 0.0 ,0.0);
+                    gl_FragColor = vec4(oC.yz,0.0, 1.0);
                     return;
                 }
 
@@ -122,7 +122,7 @@
                 vec2 oldV = texture2D(Velocity, vec2(T.x,T.y)* Scale).xy;
                 vec2 grad = vec2(pE - pW, pN - pS) * GradientScale;
                 vec2 newV = oldV - grad;
-                gl_FragColor = vec4((vMask * newV) + obstV,0.0, 0.0);  
+                gl_FragColor = vec4((vMask * newV) + obstV, 0.0, 1.0);  
             }
         </script>  
         <script id="ComputeDivergence" type="x-shader/x-fragment">  
@@ -151,7 +151,7 @@
                 if (oE.x > 0.0) vE = oE.yz;
                 if (oW.x > 0.0) vW = oW.yz;
 
-                gl_FragColor = vec4(HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y),0.0,0.0,0.0);
+                gl_FragColor = vec4(HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y),0.0, 0.0, 1.0);
             }
         </script> 
         <script id="Splat" type="x-shader/x-fragment">  
@@ -185,11 +185,11 @@
                 float T = texture2D(Temperature, vec2(TC.x,TC.y)* Scale).r;
                 vec2 V = texture2D(Velocity, vec2(TC.x,TC.y)* Scale).xy;
 
-                gl_FragColor = vec4(V,0.0,0.0);
+                gl_FragColor = vec4(V, 0.0, 1.0);
 
                 if (T > AmbientTemperature) {
                     float D = texture2D(Density, vec2(TC.x,TC.y)* Scale).x;
-                    gl_FragColor += vec4((TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec2(0, 1),0.0,0.0);
+                    gl_FragColor += vec4((TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec2(0, 1), 0.0 , 1.0);
                 }
             }
         </script> 

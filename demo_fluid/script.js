@@ -21,17 +21,12 @@
     const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2];
     var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao , HireObstacles;
     var gl = c.getContext('webgl');
-    var ext;
-    ext = gl.getExtension('OES_texture_float') || gl.getExtension('OES_texture_half_float');
-    if(ext == null){
-        alert('float texture not supported');
-    }
     Initialize(c.width,c.height);
     render();
     function render(){
         var width = c.width;
         var height = c.height;
-     // Update(c.width, c.height);
+       Update(c.width, c.height);
         gl.useProgram(VisualizeProgram);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
         var uniLocation = new Array();
@@ -92,8 +87,8 @@
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
         
         ComputeDivergence(Velocity.Ping, Obstacles, Divergence);
-        ClearSurface(Pressure.Ping, null);
-        for (var i= 0; i < NumJacobiIterations; i++){
+        ClearSurface(Pressure.Ping, 0);
+        for (var i= 0; i < NumJacobiIterations; ++i){
             Jacobi(Pressure.Ping, Divergence, Obstacles, Pressure.Pong);
             SwapSurfaces(Pressure);
         }
@@ -181,9 +176,9 @@
         return vbo;
     }
     function ResetState(){
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);
         gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.disable(gl.BLEND);
     }
@@ -380,7 +375,11 @@
         }else{
             textureFormat = format;
         }
-        
+        var ext;
+        ext = gl.getExtension('OES_texture_float') || gl.getExtension('OES_texture_half_float');
+        if(ext == null){
+            alert('float texture not supported');
+        }
         // フレームバッファの生成
         var frameBuffer = gl.createFramebuffer();
         
