@@ -1,7 +1,11 @@
     var run = true;
     var c = document.getElementById('canvas');
     c.width = 480; //Math.min(window.innerWidth, window.innerHeight);
-    c.height =window.innerHeight - 50;
+    if (window.innerHeight > 800) {
+        c.height =900;
+    }else{
+        c.height =700;
+    }
     var GridWidth = c.width / 2;
     var GridHeight = c.height / 2;
     var width = c.width;
