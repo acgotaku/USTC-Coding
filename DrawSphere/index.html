@@ -1,0 +1,253 @@
+<html>  
+    <head>  
+        <title>WebGL Particle Fluid Simulation </title>  
+        
+        <script src="minMatrixb.js" type="text/javascript"></script>  
+          
+        <script id="Vertex" type="x-shader/x-vertex">  
+            attribute vec4 Position;
+            void main(void){
+                gl_Position = Position;
+
+            }
+        </script>  
+        <script id="Fill" type="x-shader/x-fragment">  
+            precision mediump float;
+            void main(void){
+                gl_FragColor  = vec4(1, 0, 0, 1);
+            } 
+        </script>  
+
+        <script id="Sphere.VS" type="x-shader/x-vertex">  
+            attribute vec3 position;
+            attribute vec3 normal;
+            attribute vec4 color;
+            uniform   mat4 mvpMatrix;
+            uniform   mat4 mMatrix;
+            varying   vec3 vPosition;
+            varying   vec3 vNormal;
+            varying   vec4 vColor;
+
+            void main(void){
+                vPosition   = (mMatrix * vec4(position, 1.0)).xyz;
+                vNormal     = normal;
+                vColor      = color;
+                gl_Position = mvpMatrix * vec4(position, 1.0);
+            }
+        </script>  
+        <script id="Sphere.FS" type="x-shader/x-fragment">  
+            precision mediump float;
+
+            uniform mat4 invMatrix;
+            uniform vec3 lightPosition;
+            uniform vec3 eyeDirection;
+            uniform vec4 ambientColor;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+            varying vec4 vColor;
+
+            void main(void){
+                vec3  lightVec  = lightPosition - vPosition;
+                vec3  invLight  = normalize(invMatrix * vec4(lightVec, 0.0)).xyz;
+                vec3  invEye    = normalize(invMatrix * vec4(eyeDirection, 0.0)).xyz;
+                vec3  halfLE    = normalize(invLight + invEye);
+                float diffuse   = clamp(dot(vNormal, invLight), 0.0, 1.0) + 0.2;
+                float specular  = pow(clamp(dot(vNormal, halfLE), 0.0, 1.0), 50.0);
+                vec4  destColor = vColor * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0) + ambientColor;
+                gl_FragColor    = destColor;
+            }
+        </script>  
+
+        <script id="Advect" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D VelocityTexture;
+            uniform sampler2D SourceTexture;
+            uniform sampler2D Obstacles;
+
+            uniform vec2 InverseSize;
+            uniform float TimeStep;
+            uniform float Dissipation;
+            void main(void){
+                vec2 fragCoord = gl_FragCoord.xy;
+                float solid = texture(Obstacles, InverseSize * fragCoord).x;
+                if (solid > 0) {
+                    gl_FragColor = vec4(0);
+                    return;
+                }
+
+                vec2 u = texture(VelocityTexture, InverseSize * fragCoord).xy;
+                vec2 coord = InverseSize * (fragCoord - TimeStep * u);
+                gl_FragColor = Dissipation * texture(SourceTexture, coord);
+            } 
+        </script>  
+        <script id="Jacobi" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Pressure;
+            uniform sampler2D Divergence;
+            uniform sampler2D Obstacles;
+
+            uniform float Alpha;
+            uniform float InverseBeta;
+            void main(void){
+                ivec2 T = ivec2(gl_FragCoord.xy);
+
+                // Find neighboring pressure:
+                vec4 pN = texelFetchOffset(Pressure, T, 0, ivec2(0, 1));
+                vec4 pS = texelFetchOffset(Pressure, T, 0, ivec2(0, -1));
+                vec4 pE = texelFetchOffset(Pressure, T, 0, ivec2(1, 0));
+                vec4 pW = texelFetchOffset(Pressure, T, 0, ivec2(-1, 0));
+                vec4 pC = texelFetch(Pressure, T, 0);
+
+                // Find neighboring obstacles:
+                vec3 oN = texelFetchOffset(Obstacles, T, 0, ivec2(0, 1)).xyz;
+                vec3 oS = texelFetchOffset(Obstacles, T, 0, ivec2(0, -1)).xyz;
+                vec3 oE = texelFetchOffset(Obstacles, T, 0, ivec2(1, 0)).xyz;
+                vec3 oW = texelFetchOffset(Obstacles, T, 0, ivec2(-1, 0)).xyz;
+
+                // Use center pressure for solid cells:
+                if (oN.x > 0) pN = pC;
+                if (oS.x > 0) pS = pC;
+                if (oE.x > 0) pE = pC;
+                if (oW.x > 0) pW = pC;
+
+                vec4 bC = texelFetch(Divergence, T, 0);
+                gl_FragColor = (pW + pE + pS + pN + Alpha * bC) * InverseBeta;
+            } 
+        </script>  
+
+
+
+        <script id="SubtractGradient" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Pressure;
+            uniform sampler2D Obstacles;
+            uniform float GradientScale;
+            void main(void){
+                ivec2 T = ivec2(gl_FragCoord.xy);
+
+                vec3 oC = texelFetch(Obstacles, T, 0).xyz;
+                if (oC.x > 0) {
+                    gl_FragColor = oC.yz;
+                    return;
+                }
+
+                // Find neighboring pressure:
+                float pN = texelFetchOffset(Pressure, T, 0, ivec2(0, 1)).r;
+                float pS = texelFetchOffset(Pressure, T, 0, ivec2(0, -1)).r;
+                float pE = texelFetchOffset(Pressure, T, 0, ivec2(1, 0)).r;
+                float pW = texelFetchOffset(Pressure, T, 0, ivec2(-1, 0)).r;
+                float pC = texelFetch(Pressure, T, 0).r;
+
+                // Find neighboring obstacles:
+                vec3 oN = texelFetchOffset(Obstacles, T, 0, ivec2(0, 1)).xyz;
+                vec3 oS = texelFetchOffset(Obstacles, T, 0, ivec2(0, -1)).xyz;
+                vec3 oE = texelFetchOffset(Obstacles, T, 0, ivec2(1, 0)).xyz;
+                vec3 oW = texelFetchOffset(Obstacles, T, 0, ivec2(-1, 0)).xyz;
+
+                // Use center pressure for solid cells:
+                vec2 obstV = vec2(0);
+                vec2 vMask = vec2(1);
+
+                if (oN.x > 0) { pN = pC; obstV.y = oN.z; vMask.y = 0; }
+                if (oS.x > 0) { pS = pC; obstV.y = oS.z; vMask.y = 0; }
+                if (oE.x > 0) { pE = pC; obstV.x = oE.y; vMask.x = 0; }
+                if (oW.x > 0) { pW = pC; obstV.x = oW.y; vMask.x = 0; }
+
+                // Enforce the free-slip boundary condition:
+                vec2 oldV = texelFetch(Velocity, T, 0).xy;
+                vec2 grad = vec2(pE - pW, pN - pS) * GradientScale;
+                vec2 newV = oldV - grad;
+                gl_FragColor = (vMask * newV) + obstV;  
+            }
+        </script>  
+        <script id="ComputeDivergence" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Obstacles;
+            uniform float HalfInverseCellSize;
+            void main(){
+                ivec2 T = ivec2(gl_FragCoord.xy);
+
+                // Find neighboring velocities:
+                vec2 vN = texelFetchOffset(Velocity, T, 0, ivec2(0, 1)).xy;
+                vec2 vS = texelFetchOffset(Velocity, T, 0, ivec2(0, -1)).xy;
+                vec2 vE = texelFetchOffset(Velocity, T, 0, ivec2(1, 0)).xy;
+                vec2 vW = texelFetchOffset(Velocity, T, 0, ivec2(-1, 0)).xy;
+
+                // Find neighboring obstacles:
+                vec3 oN = texelFetchOffset(Obstacles, T, 0, ivec2(0, 1)).xyz;
+                vec3 oS = texelFetchOffset(Obstacles, T, 0, ivec2(0, -1)).xyz;
+                vec3 oE = texelFetchOffset(Obstacles, T, 0, ivec2(1, 0)).xyz;
+                vec3 oW = texelFetchOffset(Obstacles, T, 0, ivec2(-1, 0)).xyz;
+
+                // Use obstacle velocities for solid cells:
+                if (oN.x > 0) vN = oN.yz;
+                if (oS.x > 0) vS = oS.yz;
+                if (oE.x > 0) vE = oE.yz;
+                if (oW.x > 0) vW = oW.yz;
+
+                gl_FragColor = HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y);
+            }
+        </script> 
+        <script id="Splat" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform vec2 Point;
+            uniform float Radius;
+            uniform vec3 FillColor;
+            void main(){
+                float d = distance(Point, gl_FragCoord.xy);
+                if (d < Radius) {
+                    float a = (Radius - d) * 0.5;
+                    a = min(a, 1.0);
+                    gl_FragColor = vec4(FillColor, a);
+                } else {
+                    gl_FragColor = vec4(0);
+                }
+            }
+        </script> 
+        <script id="Buoyancy" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Temperature;
+            uniform sampler2D Density;
+            uniform float AmbientTemperature;
+            uniform float TimeStep;
+            uniform float Sigma;
+            uniform float Kappa;
+            void main(){
+                ivec2 TC = ivec2(gl_FragCoord.xy);
+                float T = texelFetch(Temperature, TC, 0).r;
+                vec2 V = texelFetch(Velocity, TC, 0).xy;
+
+                gl_FragColor = V;
+
+                if (T > AmbientTemperature) {
+                    float D = texelFetch(Density, TC, 0).x;
+                    gl_FragColor += (TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec2(0, 1);
+                }
+            }
+        </script> 
+        <script id="Visualize" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Sampler;
+            uniform vec3 FillColor;
+            uniform vec2 Scale;
+            void main(){
+                float L = texture(Sampler, gl_FragCoord.xy * Scale).r;
+                gl_FragColor = vec4(FillColor, L);
+            }
+        </script> 
+        <style>
+            * {
+                margin: 0 auto;
+                text-align: center;
+            }
+        </style>
+    </head>  
+    <body>  
+        <canvas id="canvas"></canvas>  
+       
+        <script src="script.js" type="text/javascript"></script>  
+    </body>  
+</html>  
