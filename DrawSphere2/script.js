@@ -34,21 +34,21 @@
  
     // locationの初期化
     var AttLocation = [];
-    AttLocation.push(gl.getAttribLocation(Prg, 'position'));
-    AttLocation.push(gl.getAttribLocation(Prg, 'normal'));
-    AttLocation.push(gl.getAttribLocation(Prg, 'color'));
+    AttLocation.push(gl.getAttribLocation(Prg, 'Position'));
+    AttLocation.push(gl.getAttribLocation(Prg, 'Normal'));
     var AttStride = [];
     AttStride.push(3);
     AttStride.push(3);
-    AttStride.push(4);
     //-1,-1,1,-1,1,1,-1,1,-1,-1
     var uniLocation = new Array();
-    uniLocation.push(gl.getUniformLocation(Prg, 'mvpMatrix'));
-    uniLocation.push(gl.getUniformLocation(Prg, 'mMatrix'));
-    uniLocation.push(gl.getUniformLocation(Prg, 'invMatrix'));
-    uniLocation.push(gl.getUniformLocation(Prg, 'lightPosition'));
-    uniLocation.push(gl.getUniformLocation(Prg, 'eyeDirection'));
-    uniLocation.push(gl.getUniformLocation(Prg, 'ambientColor'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'ModelviewProjection'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'ViewMatrix'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'NormalMatrix'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'LightPosition'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'DiffuseMaterial'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'AmbientMaterial'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'SpecularMaterial'));
+    uniLocation.push(gl.getUniformLocation(Prg, 'Shininess'));
     var m = new matIV();
     
     // 各種行列の生成と初期化
@@ -60,7 +60,7 @@
     var invMatrix = m.identity(m.create());
     
     // 点光源の位置
-    var lightPosition = [0.25, 0.25, 3.0];
+    var lightPosition = [0.25, 0.25, 1.0];
     
     // 環境光の色
     var ambientColor = [0.125, 0.125, 0.0, 1.0];
@@ -71,7 +71,7 @@
     // カメラの上方向を表すベクトル
     var camUpDirection = [0.0, 1.0, 0.0];
     m.lookAt(camPosition, [0, 0, 0], camUpDirection, vMatrix);
-    m.perspective(45, c.width / c.height, 0.1, 100, pMatrix);
+    m.perspective(45, c.width / c.height, 2, 500, pMatrix);
     m.multiply(pMatrix, vMatrix, tmpMatrix);
     var position =[
             -1.0,-1.0, 
@@ -85,7 +85,7 @@
     var sPosition = create_vbo(sphereData.p);
     var sNormal   = create_vbo(sphereData.n);
     var sColor    = create_vbo(sphereData.c);
-    var sVBOList  = [sPosition, sNormal, sColor];
+    var sVBOList  = [sPosition, sNormal];
     
     // 球体用IBOの生成
     var sIndex = create_ibo(sphereData.i);
@@ -123,15 +123,17 @@
        // m.rotate(mMatrix, -rad, [0, 1, 1], mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         m.inverse(mMatrix, invMatrix);
-
+       // m.multiply(vMatrix, mMatrix, invMatrix);
         gl.useProgram(Prg);
-
+       
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
-        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniformMatrix3fv(uniLocation[1], false, m.getUpper3x3(vMatrix));
+        gl.uniformMatrix3fv(uniLocation[2], false, m.getUpper3x3(invMatrix));
         gl.uniform3fv(uniLocation[3], lightPosition);
-        gl.uniform3fv(uniLocation[4], camPosition);
-        gl.uniform4fv(uniLocation[5], ambientColor);
+        gl.uniform3fv(uniLocation[4], [1.0, 0.5, 0.125]);
+        gl.uniform3fv(uniLocation[5], [0.5, 0.25, 0.6]);
+        gl.uniform3fv(uniLocation[6], [0.5, 0.5, 0.5]);
+        gl.uniform1f(uniLocation[7], 50.0);
         gl.drawElements(gl.TRIANGLES, sphereData.i.length, gl.UNSIGNED_SHORT, 0);
         gl.flush();
         

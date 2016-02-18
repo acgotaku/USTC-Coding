@@ -19,42 +19,58 @@
         </script>  
 
         <script id="Sphere.VS" type="x-shader/x-vertex">  
-            attribute vec3 position;
-            attribute vec3 normal;
-            attribute vec4 color;
-            uniform   mat4 mvpMatrix;
-            uniform   mat4 mMatrix;
-            varying   vec3 vPosition;
-            varying   vec3 vNormal;
-            varying   vec4 vColor;
+            attribute vec3 Position;
+            attribute vec3 Normal;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+            uniform mat4 ModelviewProjection;
 
-            void main(void){
-                vPosition   = (mMatrix * vec4(position, 1.0)).xyz;
-                vNormal     = normal;
-                vColor      = color;
-                gl_Position = mvpMatrix * vec4(position, 1.0);
+            void main()
+            {
+                vNormal = Normal;
+                vPosition = Position.xyz;
+                gl_Position = ModelviewProjection * vec4(Position, 1.0);
             }
         </script>  
         <script id="Sphere.FS" type="x-shader/x-fragment">  
             precision mediump float;
-
-            uniform mat4 invMatrix;
-            uniform vec3 lightPosition;
-            uniform vec3 eyeDirection;
-            uniform vec4 ambientColor;
-            varying vec3 vPosition;
             varying vec3 vNormal;
-            varying vec4 vColor;
 
-            void main(void){
-                vec3  lightVec  = lightPosition - vPosition;
-                vec3  invLight  = normalize(invMatrix * vec4(lightVec, 0.0)).xyz;
-                vec3  invEye    = normalize(invMatrix * vec4(eyeDirection, 0.0)).xyz;
-                vec3  halfLE    = normalize(invLight + invEye);
-                float diffuse   = clamp(dot(vNormal, invLight), 0.0, 1.0) + 0.2;
-                float specular  = pow(clamp(dot(vNormal, halfLE), 0.0, 1.0), 10.0);
-                vec4  destColor = vColor * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular), 1.0) + ambientColor;
-                gl_FragColor    = destColor;
+            uniform mat3 ViewMatrix;
+            uniform vec3 LightPosition;
+            uniform vec3 DiffuseMaterial;
+            uniform vec3 AmbientMaterial;
+            uniform vec3 SpecularMaterial;
+            uniform float Shininess;
+            uniform mat3 NormalMatrix;
+
+            vec3 ComputeLight(vec3 L, vec3 N, bool specular)
+            {
+                L = ViewMatrix * normalize(L);
+                float df = max(0.0,dot(N, L));
+                vec3 color = df * DiffuseMaterial;
+                if (df > 0.0 && specular) {
+                    vec3 E = vec3(0, 0, 1);
+                    vec3 R = reflect(-L, N);
+                    float sf = max(0.0,dot(R, E));
+                    sf = pow(sf, Shininess);
+                    color += sf * SpecularMaterial;
+                }
+                return color;
+            }
+
+            void main()
+            {
+                //vec3 N = NormalMatrix * normalize(gFacetNormal);
+                vec3 N = NormalMatrix * normalize(vNormal);
+
+                vec3 color = AmbientMaterial;
+                color += 0.5 * ComputeLight(LightPosition, N, true);
+
+                vec3 cameraLight = vec3(0, 0, 1) * ViewMatrix;
+                color += 0.5 * ComputeLight(cameraLight, N, false);
+
+                gl_FragColor = vec4(color, 1.0);
             }
         </script>  
 
