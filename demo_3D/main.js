@@ -40,7 +40,7 @@
         gl.uniform3fv(uniLocation[0], [0.125, 0.8, 0.75]);
         gl.uniform2fv(uniLocation[1], [1.0/width, 1.0/height]);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        RenderSphere();
+        //RenderSphere();
         gl.bindTexture(gl.TEXTURE_2D, null);
         gl.flush();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -109,11 +109,8 @@
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.CULL_FACE);
-      //  SetAttribute(VBOList, AttLocation, AttStride);
-       // gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        /*
-        
-        
+        SetAttribute(VBOList, AttLocation, AttStride);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);       
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index);
         m.identity(mMatrix);
         var qMatrix = m.identity(m.create());
@@ -131,7 +128,7 @@
         gl.uniform3fv(uniLocation[6], [0.5, 0.5, 0.5]);
         gl.uniform1f(uniLocation[7], 50.0);
         gl.drawElements(gl.TRIANGLES, SphereData.i.length, gl.UNSIGNED_SHORT, 0);
-        */        
+             
     }
     function Update(){
         gl.viewport(0, 0, GridWidth, GridHeight);
