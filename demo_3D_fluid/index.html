@@ -1,0 +1,381 @@
+<html>  
+    <head>  
+        <title>WebGL Particle Fluid Simulation </title>
+        <script src="minMatrixb.js" type="text/javascript"></script>  
+        <script src="lib.js" type="text/javascript"></script>  
+        <script src="fluid.js" type="text/javascript"></script>  
+        <script id="Vertex" type="x-shader/x-vertex">  
+            attribute vec4 Position;
+            void main(void){
+                gl_Position = Position;
+
+            }
+        </script>  
+        <script id="Fill" type="x-shader/x-fragment">  
+            precision mediump float;
+            void main(void){
+                gl_FragColor  = vec4(1.0, 0.0, 0.0, 1.0);
+            } 
+        </script>  
+
+
+        <script id="Sphere.VS" type="x-shader/x-vertex">  
+            attribute vec3 Position;
+            attribute vec3 Normal;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+            uniform mat4 ModelviewProjection;
+
+            void main()
+            {
+                vNormal = Normal;
+                vPosition = Position.xyz;
+                gl_Position = ModelviewProjection * vec4(Position, 1.0);
+            }
+        </script>  
+        <script id="Sphere.FS" type="x-shader/x-fragment">  
+            precision mediump float;
+            varying vec3 vNormal;
+
+            uniform mat3 ViewMatrix;
+            uniform vec3 LightPosition;
+            uniform vec3 DiffuseMaterial;
+            uniform vec3 AmbientMaterial;
+            uniform vec3 SpecularMaterial;
+            uniform float Shininess;
+            uniform mat3 NormalMatrix;
+
+            vec3 ComputeLight(vec3 L, vec3 N, bool specular)
+            {
+                L = ViewMatrix * normalize(L);
+                float df = max(0.0,dot(N, L));
+                vec3 color = df * DiffuseMaterial;
+                if (df > 0.0 && specular) {
+                    vec3 E = vec3(0, 0, 1);
+                    vec3 R = reflect(-L, N);
+                    float sf = max(0.0,dot(R, E));
+                    sf = pow(sf, Shininess);
+                    color += sf * SpecularMaterial;
+                }
+                return color;
+            }
+
+            void main()
+            {
+                //vec3 N = NormalMatrix * normalize(gFacetNormal);
+                vec3 N = NormalMatrix * normalize(vNormal);
+
+                vec3 color = AmbientMaterial;
+                color += 0.5 * ComputeLight(LightPosition, N, true);
+
+                vec3 cameraLight = vec3(0, 0, 1) * ViewMatrix;
+                color += 0.5 * ComputeLight(cameraLight, N, false);
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        </script>
+
+        <script id="Advect" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D VelocityTexture;
+            uniform sampler2D SourceTexture;
+            uniform sampler2D Obstacles;
+
+            uniform vec2 InverseSize;
+            uniform float TimeStep;
+            uniform float Dissipation;
+            uniform float Size;
+            varying float gLayer;
+
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+            void main(void){
+                vec3 fragCoord = vec3(gl_FragCoord.xy, gLayer);
+                float solid = sampleAs3DTexture(Obstacles, InverseSize * fragCoord, Size).x;
+                if (solid > 0.0) {
+                    gl_FragColor = vec4(0);
+                    return;
+                }
+
+                vec3 u = sampleAs3DTexture(VelocityTexture, InverseSize * fragCoord, Size).xy;
+                vec3 coord = InverseSize * (fragCoord - TimeStep * u);
+                gl_FragColor = Dissipation * sampleAs3DTexture(SourceTexture, coord);
+            } 
+        </script>  
+        <script id="Jacobi" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Pressure;
+            uniform sampler2D Divergence;
+            uniform sampler2D Obstacles;
+
+            uniform float Alpha;
+            uniform float InverseBeta;
+            uniform vec3 Scale;
+            uniform float Size;
+            varying float gLayer;
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+
+            void main(void){
+                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+
+                // Find neighboring pressure:
+                vec4 pN = sampleAs3DTexture(Pressure, vec3(T.x,T.y+1.0, T.z)* Scale, Size);
+                vec4 pS = sampleAs3DTexture(Pressure, vec3(T.x,T.y-1.0, T.z)* Scale, Size);
+                vec4 pE = sampleAs3DTexture(Pressure, vec3(T.x+1.0,T.y, T.z)* Scale, Size);
+                vec4 pW = sampleAs3DTexture(Pressure, vec3(T.x-1.0,T.y, T.z)* Scale, Size);
+                vec4 pU = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z+1.0)* Scale, Size);
+                vec4 pD = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z-1.0)* Scale, Size);
+                vec4 pC = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z)* Scale);
+
+                // Find neighboring obstacles:
+                vec3 oN = sampleAs3DTexture(Obstacles, vec3(T.x,T.y+1.0, T.z)* Scale, Size).xyz;
+                vec3 oS = sampleAs3DTexture(Obstacles, vec3(T.x,T.y-1.0, T.z)* Scale, Size).xyz;
+                vec3 oE = sampleAs3DTexture(Obstacles, vec3(T.x+1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oW = sampleAs3DTexture(Obstacles, vec3(T.x-1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oU = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z+1.0)* Scale, Size).xyz;
+                vec3 oD = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z-1.0)* Scale, Size).xyz;
+
+                // Use center pressure for solid cells:
+                if (oN.x > 0.0) pN = pC;
+                if (oS.x > 0.0) pS = pC;
+                if (oE.x > 0.0) pE = pC;
+                if (oW.x > 0.0) pW = pC;
+                if (oU.x > 0.0) pU = pC;
+                if (oD.x > 0.0) pD = pC;
+
+                vec4 bC = sampleAs3DTexture(Divergence, vec3(T.x,T.y, T.z)* Scale, Size);
+                gl_FragColor = (pW + pE + pS + pN + Alpha * bC) * InverseBeta;
+            } 
+        </script>  
+
+
+
+        <script id="SubtractGradient" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Pressure;
+            uniform sampler2D Obstacles;
+            uniform float GradientScale;
+            varying float gLayer;
+            uniform vec3 Scale;
+            uniform float Size;
+
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+
+            void main(void){
+                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+
+                vec3 oC = sampleAs3DTexture(Obstacles, vec2(T.x,T.y,T.z)* Scale, Size).xyz;
+                if (oC.x > 0.0) {
+                    gl_FragColor = vec4(oC.yzx, 1.0);
+                    return;
+                }
+
+                // Find neighboring pressure:
+                float pN = sampleAs3DTexture(Pressure, vec3(T.x,T.y+1.0, T.z)* Scale, Size).r;
+                float pS = sampleAs3DTexture(Pressure, vec3(T.x,T.y-1.0, T.z)* Scale, Size).r;
+                float pE = sampleAs3DTexture(Pressure, vec3(T.x+1.0,T.y, T.z)* Scale, Size).r;
+                float pW = sampleAs3DTexture(Pressure, vec3(T.x-1.0,T.y, T.z)* Scale, Size).r;
+                float pU = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z+1.0)* Scale, Size).r;
+                float pD = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z-1.0)* Scale, Size).r;
+                float pC = sampleAs3DTexture(Pressure, vec3(T.x,T.y, T.z)* Scale).r;
+
+                // Find neighboring obstacles:
+                vec3 oN = sampleAs3DTexture(Obstacles, vec3(T.x,T.y+1.0, T.z)* Scale, Size).xyz;
+                vec3 oS = sampleAs3DTexture(Obstacles, vec3(T.x,T.y-1.0, T.z)* Scale, Size).xyz;
+                vec3 oE = sampleAs3DTexture(Obstacles, vec3(T.x+1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oW = sampleAs3DTexture(Obstacles, vec3(T.x-1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oU = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z+1.0)* Scale, Size).xyz;
+                vec3 oD = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z-1.0)* Scale, Size).xyz;
+
+                // Use center pressure for solid cells:
+                vec3 obstV = vec3(0);
+                vec3 vMask = vec3(1);
+
+                if (oN.x > 0.0) { pN = pC; obstV.y = oN.z; vMask.y = 0.0; }
+                if (oS.x > 0.0) { pS = pC; obstV.y = oS.z; vMask.y = 0.0; }
+                if (oE.x > 0.0) { pE = pC; obstV.x = oE.y; vMask.x = 0.0; }
+                if (oW.x > 0.0) { pW = pC; obstV.x = oW.y; vMask.x = 0.0; }
+                if (oU.x > 0.0) { pU = pC; obstV.z = oU.x; vMask.z = 0.0; }
+                if (oD.x > 0.0) { pD = pC; obstV.z = oD.x; vMask.z = 0.0; }
+
+                // Enforce the free-slip boundary condition:
+                vec3 oldV = sampleAs3DTexture(Velocity, vec2(T.x,T.y,T.z)* Scale, Size).xyz;
+                vec3 grad = vec3(pE - pW, pN - pS, pU - pD) * GradientScale;
+                vec3 newV = oldV - grad;
+                gl_FragColor = vec4((vMask * newV) + obstV, 1.0);  
+            }
+        </script>  
+        <script id="ComputeDivergence" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Obstacles;
+            uniform float HalfInverseCellSize;
+            varying float gLayer;
+            uniform vec3 Scale;
+            uniform float Size;
+
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+            void main(){
+                vec2 T = vec2(gl_FragCoord.xy);
+                // Find neighboring velocities:
+                vec3 vN = sampleAs3DTexture(Velocity, vec3(T.x,T.y+1.0, T.z)* Scale, Size).xyz;
+                vec3 vS = sampleAs3DTexture(Velocity, vec3(T.x,T.y-1.0, T.z)* Scale, Size).xyz;
+                vec3 vE = sampleAs3DTexture(Velocity, vec3(T.x+1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 vW = sampleAs3DTexture(Velocity, vec3(T.x-1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 vU = sampleAs3DTexture(Velocity, vec3(T.x,T.y, T.z+1.0)* Scale, Size).xyz;
+                vec3 vD = sampleAs3DTexture(Velocity, vec3(T.x,T.y, T.z-1.0)* Scale, Size).xyz;
+
+                // Find neighboring obstacles:
+                vec3 oN = sampleAs3DTexture(Obstacles, vec3(T.x,T.y+1.0, T.z)* Scale, Size).xyz;
+                vec3 oS = sampleAs3DTexture(Obstacles, vec3(T.x,T.y-1.0, T.z)* Scale, Size).xyz;
+                vec3 oE = sampleAs3DTexture(Obstacles, vec3(T.x+1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oW = sampleAs3DTexture(Obstacles, vec3(T.x-1.0,T.y, T.z)* Scale, Size).xyz;
+                vec3 oU = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z+1.0)* Scale, Size).xyz;
+                vec3 oD = sampleAs3DTexture(Obstacles, vec3(T.x,T.y, T.z-1.0)* Scale, Size).xyz;
+
+                // Use obstacle velocities for solid cells:
+                if (oN.x > 0.0) vN = oN.yzx;
+                if (oS.x > 0.0) vS = oS.yzx;
+                if (oE.x > 0.0) vE = oE.yzx;
+                if (oW.x > 0.0) vW = oW.yzx;
+                if (oU.x > 0.0) vU = oU.yzx;
+                if (oD.x > 0.0) vD = oD.yzx;
+
+                gl_FragColor = vec4(HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y),0.0, 0.0, 1.0);
+            }
+        </script> 
+        <script id="Splat" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform vec3 Point;
+            uniform float Radius;
+            uniform vec3 FillColor;
+            varying float gLayer;
+            void main(){
+                float d = distance(Point, vec3(gl_FragCoord.xy, gLayer));
+                if (d < Radius) {
+                    float a = (Radius - d) * 0.5;
+                    a = min(a, 1.0);
+                    gl_FragColor = vec4(FillColor, a);
+                } else {
+                    gl_FragColor = vec4(0);
+                }
+            }
+        </script> 
+        <script id="Buoyancy" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Velocity;
+            uniform sampler2D Temperature;
+            uniform sampler2D Density;
+            uniform float AmbientTemperature;
+            uniform float TimeStep;
+            uniform float Sigma;
+            uniform float Kappa;
+
+            varying float gLayer;
+            uniform vec3 Scale;
+            uniform float Size;
+
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+
+            void main(){
+                vec3 TC = vec3(gl_FragCoord.xy, gLayer);
+                float T = sampleAs3DTexture(Temperature, vec3(TC.x,TC.y,TC.z)* Scale, Size).r;
+                vec3 V = sampleAs3DTexture(Velocity, vec3(TC.x,TC.y,TC.z)* Scale, Size).xyz;
+
+                gl_FragColor = vec4(V, 1.0);
+
+                if (T > AmbientTemperature) {
+                    float D = sampleAs3DTexture(Density, vec3(TC.x,TC.y,TC.z)* Scale).x;
+                    gl_FragColor += vec4((TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec3(0, -1, 0), 1.0);
+                }
+            }
+        </script> 
+        <script id="Visualize" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Sampler;
+            uniform vec3 FillColor;
+            uniform vec2 Scale;
+            void main(){
+                float L = texture2D(Sampler, gl_FragCoord.xy * Scale).r;
+                gl_FragColor = vec4(FillColor, L);
+            }
+        </script> 
+        <style>
+            * {
+                margin: 0 auto;
+                margin-top: 1px;
+                text-align: center;
+            }
+        </style>
+    </head>  
+    <body>  
+        <canvas id="canvas"></canvas>  
+       
+        <script src="main.js" type="text/javascript"></script>  
+    </body>  
+</html>  
