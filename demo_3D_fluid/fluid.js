@@ -11,10 +11,11 @@
     const  VelocityDissipation = 0.99;
     const  DensityDissipation = 0.9999;
 
-    function Surface(FboHandle, TextureHandle, NumComponents){
+    function Surface(FboHandle, TextureHandle, depth, NumComponents){
         var object={};
         object.FboHandle = FboHandle;
         object.TextureHandle = TextureHandle;
+        object.Depth = depth;
         object.NumComponents = NumComponents;
         return object;
     }
@@ -24,9 +25,9 @@
         object.Pong = Pong;
         return object;
     }
-    function CreateSurface(width, height, numComponents){
+    function CreateSurface(width, height,depth, numComponents){
         var frameBuffer  = CreateFramebuffer(width, height, gl.FLOAT);
-        var surface =Surface(frameBuffer.f , frameBuffer.t, numComponents);
+        var surface =Surface(frameBuffer.f , frameBuffer.t, depth, numComponents);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         return surface;
@@ -36,10 +37,10 @@
         gl.clearColor(v, v, v, v);
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
-    function CreateSlab(width, height, numComponents){
+    function CreateSlab(width, height, depth, numComponents){
         var slab = Slab();
-        slab.Ping = CreateSurface(width, height, numComponents);
-        slab.Pong = CreateSurface(width, height, numComponents);
+        slab.Ping = CreateSurface(width, height, depth, numComponents);
+        slab.Pong = CreateSurface(width, height, depth, numComponents);
         return slab;
     }
 
@@ -55,12 +56,12 @@
     }
     function InitSlabOps(){
         Programs =Programs();
-        Programs.Advect = CreateProgram("Vertex", "Advect");
-        Programs.Jacobi = CreateProgram("Vertex", "Jacobi");
-        Programs.SubtractGradient = CreateProgram("Vertex", "SubtractGradient");
-        Programs.ComputeDivergence = CreateProgram("Vertex", "ComputeDivergence");
-        Programs.ApplyImpulse = CreateProgram("Vertex", "Splat");
-        Programs.ApplyBuoyancy = CreateProgram("Vertex", "Buoyancy");
+        Programs.Advect = CreateProgram("Smoke.Vertex", "Advect");
+        Programs.Jacobi = CreateProgram("Smoke.Vertex", "Jacobi");
+        Programs.SubtractGradient = CreateProgram("Smoke.Vertex", "SubtractGradient");
+        Programs.ComputeDivergence = CreateProgram("Smoke.Vertex", "ComputeDivergence");
+        Programs.ApplyImpulse = CreateProgram("Smoke.Vertex", "Splat");
+        Programs.ApplyBuoyancy = CreateProgram("Smoke.Vertex", "Buoyancy");
     }
     function SwapSurfaces(slab){
         var temp = slab.Ping;
@@ -180,13 +181,16 @@
         var inverseSize = gl.getUniformLocation(p, 'InverseSize');
         var timeStep = gl.getUniformLocation(p, "TimeStep");
         var dissLoc = gl.getUniformLocation(p, "Dissipation");
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
         var sourceTexture = gl.getUniformLocation(p, "SourceTexture");
         var obstaclesTexture = gl.getUniformLocation(p, "Obstacles");
-        gl.uniform2fv(inverseSize, [1.0 /GridWidth, 1.0/GridHeight]);
+        gl.uniform3fv(inverseSize, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         gl.uniform1f(timeStep, TimeStep);
         gl.uniform1f(dissLoc, dissipation);
         gl.uniform1i(sourceTexture, 1);
         gl.uniform1i(obstaclesTexture, 2);
+        gl.uniform1f(size,dest.Depth);
         gl.bindFramebuffer(gl.FRAMEBUFFER, dest.FboHandle);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, velocity.TextureHandle);
@@ -194,20 +198,27 @@
         gl.bindTexture(gl.TEXTURE_2D, source.TextureHandle);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, obstacles.TextureHandle);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();
     }
     function ApplyBuoyancy(velocity, temperature, density, dest){
         var p = Programs.ApplyBuoyancy;
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         var tempSampler = gl.getUniformLocation(p, "Temperature");
         var inkSampler = gl.getUniformLocation(p, "Density");
         var ambTemp = gl.getUniformLocation(p, "AmbientTemperature");
         var timeStep = gl.getUniformLocation(p, "TimeStep");
         var sigma = gl.getUniformLocation(p, "Sigma");
         var kappa = gl.getUniformLocation(p, "Kappa");
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
+        gl.uniform1f(size,dest.Depth);
         gl.uniform1i(tempSampler, 1);
         gl.uniform1i(inkSampler, 2);
         gl.uniform1f(ambTemp, AmbientTemperature);
@@ -221,7 +232,11 @@
         gl.bindTexture(gl.TEXTURE_2D, temperature.TextureHandle);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, density.TextureHandle);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();
 
     }
@@ -231,12 +246,19 @@
         var pointLoc = gl.getUniformLocation(p, "Point");
         var radiusLoc = gl.getUniformLocation(p, "Radius");
         var fillColorLoc = gl.getUniformLocation(p, "FillColor");
-        gl.uniform2fv(pointLoc, position);
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
+        gl.uniform1f(size,dest.Depth);
+        gl.uniform3fv(pointLoc, position);
         gl.uniform1f(radiusLoc,SplatRadius);
         gl.uniform3fv(fillColorLoc, [value, value, value]);
         gl.bindFramebuffer(gl.FRAMEBUFFER, dest.FboHandle);
         gl.enable(gl.BLEND);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0 , 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0 , 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();
     }
     function ComputeDivergence(velocity, obstacles, dest){
@@ -245,26 +267,38 @@
         var halfCell = gl.getUniformLocation(p, "HalfInverseCellSize");
         gl.uniform1f(halfCell, 0.5/ CellSize);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
+        //gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
         var sampler = gl.getUniformLocation(p, "Obstacles");
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
+        gl.uniform1f(size,dest.Depth);
         gl.uniform1i(sampler, 1);
         gl.bindFramebuffer(gl.FRAMEBUFFER, dest.FboHandle);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, velocity.TextureHandle);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, obstacles.TextureHandle);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0 , 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();
     }
     function Jacobi(pressure, divergence, obstacles, dest){
         var p = Programs.Jacobi;
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
+        //gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         var alpha = gl.getUniformLocation(p, "Alpha");
         var inverseBeta = gl.getUniformLocation(p, "InverseBeta");
         var dSampler = gl.getUniformLocation(p, "Divergence");
         var oSampler = gl.getUniformLocation(p, "Obstacles");
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
+        gl.uniform1f(size,dest.Depth);
         gl.uniform1f(alpha, -CellSize * CellSize);
         gl.uniform1f(inverseBeta, 0.25);
         gl.uniform1i(dSampler, 1);
@@ -276,14 +310,19 @@
         gl.bindTexture(gl.TEXTURE_2D, divergence.TextureHandle);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, obstacles.TextureHandle);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0 , 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();
     }
     function SubtractGradient(velocity, pressure, obstacles, dest){
         var p = Programs.SubtractGradient;
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
+       // gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
         var gradientScale = gl.getUniformLocation(p, "GradientScale");
         gl.uniform1f(gradientScale, GradientScale);
         var halfCell = gl.getUniformLocation(p, "HalfInverseCellSize");
@@ -292,6 +331,9 @@
         gl.uniform1i(sampler, 1);
         sampler = gl.getUniformLocation(p, "Obstacles");
         gl.uniform1i(sampler, 2);
+        var slice = gl.getUniformLocation(p, "Slice");
+        var size = gl.getUniformLocation(p, "Size");
+        gl.uniform1f(size,dest.Depth);
         gl.bindFramebuffer(gl.FRAMEBUFFER, dest.FboHandle);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D,velocity.TextureHandle);
@@ -299,6 +341,10 @@
         gl.bindTexture(gl.TEXTURE_2D, pressure.TextureHandle);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, obstacles.TextureHandle);     
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+       // gl.drawArrays(gl.TRIANGLE_STRIP, 0 , 4);
+        for (var i = 0; i < dest.Depth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         ResetState();   
     }

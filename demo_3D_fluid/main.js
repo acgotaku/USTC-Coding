@@ -1,20 +1,22 @@
-    var run = true;
+    var run = false;
     var c = document.getElementById('canvas');
     var q = new qtnIV();
     var qt = q.identity(q.create());
-    c.width = 480; //Math.min(window.innerWidth, window.innerHeight);
+     //Math.min(window.innerWidth, window.innerHeight);
     if (window.innerHeight > 800) {
         c.height =900;
     }else{
         c.height =700;
     }
+    c.width = c.height;
     c.addEventListener('mousemove', MouseMove, true);
-    var GridWidth = c.width / 2;
-    var GridHeight = c.height / 2;
+    var GridWidth =64;
+    var GridHeight = 64;
+    var GridDepth = 64;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
-    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2];
+    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, GridDepth / 2.0];
     var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao , HireObstacles;
     var gl = c.getContext('webgl');
     var sphereVAO =InitSphere();
@@ -54,20 +56,24 @@
     function Initialize(){
         var w = GridWidth;
         var h = GridHeight;
-        Velocity = CreateSlab(w, h, 2);
-        Density = CreateSlab(w, h, 1);
-        Pressure = CreateSlab(w, h, 1);
-        Temperature = CreateSlab(w, h, 1);
-        Divergence = CreateSurface(w, h, 3);
+        var d = GridDepth;
+        Velocity = CreateSlab(w, h, d, 2);
+        Density = CreateSlab(w, h, d, 1);
+        Pressure = CreateSlab(w, h, d, 1);
+        Temperature = CreateSlab(w, h, d, 1);
+        Divergence = CreateSurface(w, h, d, 3);
         InitSlabOps();
         VisualizeProgram = CreateProgram("Vertex", "Visualize");
-        Obstacles = CreateSurface(w, h, 3);
-        CreateObstacles(Obstacles,w,h);
+        Obstacles = CreateSurface(w, h, d, 3);
+        CreateObstacles(Obstacles,w,h, d);
         w = GridWidth * 2;
         h = GridHeight * 2;
-        HireObstacles = CreateSurface(w,h,1);
-        CreateObstacles(HireObstacles, w, h);
+        d = GridDepth * 2;
+        HireObstacles = CreateSurface(w,h, d,1);
+        CreateObstacles(HireObstacles, w, h, d);
         QuadVao = CreateQuad();  
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         ClearSurface(Temperature.Ping, AmbientTemperature);  
     }

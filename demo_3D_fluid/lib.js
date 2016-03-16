@@ -73,7 +73,7 @@
             gl.useProgram(program);
             return program;
         }else{
-            console.log(gl.getProgramInfoLog(program));
+            console.log( vs +" "+ fs +"\n"+gl.getProgramInfoLog(program));
         }
     }
 

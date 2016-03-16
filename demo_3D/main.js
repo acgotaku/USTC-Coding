@@ -105,7 +105,8 @@
         uniLocation.push(gl.getUniformLocation(Prg, 'DiffuseMaterial'));
         uniLocation.push(gl.getUniformLocation(Prg, 'AmbientMaterial'));
         uniLocation.push(gl.getUniformLocation(Prg, 'SpecularMaterial'));
-        uniLocation.push(gl.getUniformLocation(Prg, 'Shininess'));        var m = new matIV();
+        uniLocation.push(gl.getUniformLocation(Prg, 'Shininess'));        
+        var m = new matIV();
         var SphereData = DrawSphere(64, 64, 0.3);
         var mMatrix = m.identity(m.create());
         var vMatrix = m.identity(m.create());
