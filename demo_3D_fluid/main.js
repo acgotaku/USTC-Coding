@@ -10,9 +10,9 @@
     }
     c.width = c.height;
     c.addEventListener('mousemove', MouseMove, true);
-    var GridWidth =64;
-    var GridHeight = 64;
-    var GridDepth = 64;
+    var GridWidth =32;
+    var GridHeight = 32;
+    var GridDepth = 32;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
@@ -28,23 +28,25 @@
         gl.useProgram(VisualizeProgram);
         ext.bindVertexArrayOES(QuadVao); 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
-        var uniLocation = new Array();
-        uniLocation.push(gl.getUniformLocation(VisualizeProgram, 'FillColor'));
-        uniLocation.push(gl.getUniformLocation(VisualizeProgram, 'Scale'));
+        var fillColor = gl.getUniformLocation(VisualizeProgram, 'FillColor');
+        var scale =gl.getUniformLocation(VisualizeProgram, 'Scale');
+        var slice = gl.getUniformLocation(VisualizeProgram, "Slice");
+        var size = gl.getUniformLocation(VisualizeProgram, "Size");
+
         gl.enable(gl.BLEND);
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         //draw ink
+        gl.uniform1f(size,GridDepth);
+        gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
+        gl.uniform3fv(fillColor, [1.0,1.0,1.0]);
         gl.bindTexture(gl.TEXTURE_2D,Density.Ping.TextureHandle);
-        gl.uniform3fv(uniLocation[0], [1.0,1.0,1.0]);
-        gl.uniform2fv(uniLocation[1], [1.0/width, 1.0/height]);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        //Draw obstacles 
-        gl.bindTexture(gl.TEXTURE_2D, HireObstacles.TextureHandle);
-        gl.uniform3fv(uniLocation[0], [0.125, 0.8, 0.75]);
-        gl.uniform2fv(uniLocation[1], [1.0/width, 1.0/height]);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); 
+        for (var i = 0; i < GridDepth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
         RenderSphere();
         ext.bindVertexArrayOES(QuadVao); 
         gl.flush();
@@ -57,19 +59,19 @@
         var w = GridWidth;
         var h = GridHeight;
         var d = GridDepth;
-        Velocity = CreateSlab(w, h, d, 2);
+        Velocity = CreateSlab(w, h, d, 3);
         Density = CreateSlab(w, h, d, 1);
         Pressure = CreateSlab(w, h, d, 1);
         Temperature = CreateSlab(w, h, d, 1);
         Divergence = CreateSurface(w, h, d, 3);
         InitSlabOps();
-        VisualizeProgram = CreateProgram("Vertex", "Visualize");
+        VisualizeProgram = CreateProgram("Render.Vertex", "Render.Fill");
         Obstacles = CreateSurface(w, h, d, 3);
         CreateObstacles(Obstacles,w,h, d);
         w = GridWidth * 2;
         h = GridHeight * 2;
         d = GridDepth * 2;
-        HireObstacles = CreateSurface(w,h, d,1);
+        HireObstacles = CreateSurface(w,h, d,3);
         CreateObstacles(HireObstacles, w, h, d);
         QuadVao = CreateQuad();  
         gl.disable(gl.DEPTH_TEST);
@@ -149,10 +151,10 @@
     }
     function Update(){
         gl.viewport(0, 0, GridWidth, GridHeight);
-
+        
         Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
         SwapSurfaces(Velocity);
-
+        
         Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
         SwapSurfaces(Temperature);
 
@@ -161,7 +163,7 @@
         
         ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
-
+        /*
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
         SwapSurfaces(Velocity);
 
@@ -174,6 +176,7 @@
         }
         SubtractGradient(Velocity.Ping, Pressure.Ping, Obstacles, Velocity.Pong);
         SwapSurfaces(Velocity);
+        */
     }
     function MouseMove(e){
         var cw = c.width;

@@ -3,13 +3,13 @@
     const  ImpulseTemperature = 10.0;
     const  ImpulseDensity = 1.0;
     const  NumJacobiIterations = 40;
-    const  TimeStep = 0.125;
+    const  TimeStep = 0.25;
     const  SmokeBuoyancy = 1.0;
     const  SmokeWeight = 0.05;
     const  GradientScale = 1.125 / CellSize;
     const  TemperatureDissipation = 0.99;
     const  VelocityDissipation = 0.99;
-    const  DensityDissipation = 0.9999;
+    const  DensityDissipation = 0.999;
 
     function Surface(FboHandle, TextureHandle, depth, NumComponents){
         var object={};
@@ -26,7 +26,7 @@
         return object;
     }
     function CreateSurface(width, height,depth, numComponents){
-        var frameBuffer  = CreateFramebuffer(width, height, gl.FLOAT);
+        var frameBuffer  = CreateFramebuffer(width * depth, height, gl.FLOAT);
         var surface =Surface(frameBuffer.f , frameBuffer.t, depth, numComponents);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -198,7 +198,6 @@
         gl.bindTexture(gl.TEXTURE_2D, source.TextureHandle);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, obstacles.TextureHandle);
-       // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         for (var i = 0; i < dest.Depth; i++){
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

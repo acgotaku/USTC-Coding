@@ -14,9 +14,52 @@
         <script id="Fill" type="x-shader/x-fragment">  
             precision mediump float;
             void main(void){
-                gl_FragColor  = vec4(1.0, 0.0, 0.0, 1.0);
+                gl_FragColor  = vec4(0.3, 0.5, 0.0, 1.0);
             } 
         </script>  
+        <script id="Render.Vertex" type="x-shader/x-vertex">  
+            attribute vec4 Position;
+            uniform float Slice;
+            uniform float Size;
+            varying float gLayer;
+            varying float vSize;     
+            void main(void){
+                gl_Position.xy = Position.xy;
+                gl_Position.zw =vec2(1.0 - 2.0/Size * Slice, 1.0);
+                gLayer =Slice;
+                vSize = Size;
+            }
+        </script>  
+        <script id="Render.Fill" type="x-shader/x-fragment">  
+            precision mediump float;
+            uniform sampler2D Sampler;
+            uniform vec3 FillColor;
+            uniform vec3 Scale;
+            varying float gLayer;
+            varying float vSize;
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
+            }
+            void main(){
+                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+                //vec3 fragCoord = vec3(gl_FragCoord.x , gl_FragCoord.y, gLayer);
+                //gl_FragColor = sampleAs3DTexture(Sampler, fragCoord * Scale, vSize);
+
+                float L = sampleAs3DTexture(Sampler, vec3(T.x,T.y, T.z) * Scale, vSize).r;
+                gl_FragColor = vec4(FillColor,L);
+            }
+        </script>
 
         <script id="Smoke.Vertex" type="x-shader/x-vertex">  
             attribute vec4 Position;
@@ -28,7 +71,8 @@
                 gl_Position = Position;
                 gl_Position.x = gl_Position.x  / Size ;
                 gl_Position.x = gl_Position.x +(2.0 * Slice + 1.0) / Size - 1.0; 
-                gLayer = Slice + 0.5;
+                gl_Position.zw =vec2(0.0, 1.0);
+                gLayer = Slice ;
                 vSize =Size;
             }
         </script>  
@@ -378,12 +422,30 @@
             precision mediump float;
             uniform sampler2D Sampler;
             uniform vec3 FillColor;
-            uniform vec2 Scale;
-            void main(){
-                float L = texture2D(Sampler, gl_FragCoord.xy * Scale).r;
-                gl_FragColor = vec4(FillColor, L);
+            varying float gLayer;
+            uniform vec3 Scale;
+            varying float vSize;
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+               float sliceSize = 1.0 / size;                         // space of 1 slice
+               float slicePixelSize = sliceSize / size;              // space of 1 pixel
+               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+               float s0 = xOffset + (zSlice0 * sliceSize);
+               float s1 = xOffset + (zSlice1 * sliceSize);
+               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+               float zOffset = mod(texCoord.z * size, 1.0);
+               return mix(slice0Color, slice1Color, zOffset);
             }
+            void main(){
+                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+                float L = sampleAs3DTexture(Sampler, vec3(T.x,T.y, T.z) * Scale, vSize).r;
+                gl_FragColor = vec4(FillColor, L);
+            } 
         </script> 
+
         <style>
             * {
                 margin: 0 auto;
