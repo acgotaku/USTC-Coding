@@ -161,7 +161,7 @@
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
         
-        ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+      //  ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
         /*
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
