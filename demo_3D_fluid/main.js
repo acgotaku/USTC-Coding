@@ -160,12 +160,12 @@
 
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
-        
-      //  ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+      
+        //ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
         /*
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
-        SwapSurfaces(Velocity);
+        SwapSurfaces(Velocity);     
 
         
         ComputeDivergence(Velocity.Ping, Obstacles, Divergence);
@@ -177,6 +177,7 @@
         SubtractGradient(Velocity.Ping, Pressure.Ping, Obstacles, Velocity.Pong);
         SwapSurfaces(Velocity);
         */
+        
     }
     function MouseMove(e){
         var cw = c.width;
