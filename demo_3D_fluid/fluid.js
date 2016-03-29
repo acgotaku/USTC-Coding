@@ -136,12 +136,12 @@
         return {p : pos, n : nor, c : col, t : st, i : idx};
     }
 
-    function CreateObstacles(dest, width ,height){
+    function CreateObstacles(dest, width ,height, depth){
         gl.bindFramebuffer(gl.FRAMEBUFFER , dest.FboHandle);
         gl.viewport(0,0, width, height);
         gl.clearColor(0,0,0,0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        var Prg = CreateProgram('Vertex', 'Fill');
+        var Prg = CreateProgram('Smoke.Vertex', 'Smoke.Fill');
         // locationの初期化
         gl.useProgram(Prg);
         var ext = gl.getExtension('OES_vertex_array_object');
@@ -149,22 +149,29 @@
         ext.bindVertexArrayOES(VAO);
         var AttLocation = [];
         AttLocation.push(gl.getAttribLocation(Prg, 'Position'));
+        var depth = gl.getUniformLocation(Prg, 'Depth');
+        var Size = gl.getUniformLocation(Prg, 'Size');
+    
         var AttStride = [];
         AttStride.push(2);
         //-1,-1,1,-1,1,1,-1,1,-1,-1
-        var Lposition =[
-                -0.9999,-0.9999, 
-                 0.9999,-0.9999,
-                 0.9999, 0.9999,
-                -0.9999, 0.9999,
-                -0.9999,-0.9999
-        ];
+        var T= 0.999;
+        var Lposition =[ -T, -T, T, -T, T,  T, -T,  T, -T, -T ];
         //position= circle({x:0,y:0}, 0.4, 100);
         var vPlane = CreateVbo(Lposition);
         var planeVBOList = [vPlane];
         SetAttribute(planeVBOList, AttLocation, AttStride);
-        gl.drawArrays(gl.LINE_STRIP, 0, Lposition.length / 2);
+        var fillcolor = gl.getUniformLocation(Prg, 'FillColor');
+        for(var i =0; i< depth; i++){
+
+            gl.uniform1f(depth, i);
+            gl.uniform1f(Size, Depth);
+            gl.uniform4fv(fillcolor, [1.0, 0.0, 0.0, 1.0]);
+            gl.drawArrays(gl.LINE_STRIP, 0, Lposition.length / 2);
+        }
+        
         gl.deleteBuffer(vPlane);
+        gl.deleteProgram(Prg);
         ext.deleteVertexArrayOES(VAO);
     }
     function ResetState(){

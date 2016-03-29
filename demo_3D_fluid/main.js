@@ -19,6 +19,7 @@
     const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, GridDepth / 2.0];
     var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao , HireObstacles;
     var gl = c.getContext('webgl');
+    var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
     var sphereVAO =InitSphere();
     Initialize();
     render();
@@ -37,16 +38,34 @@
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+
         //draw ink
+        
         gl.uniform1f(size,GridDepth);
         gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
         gl.uniform3fv(fillColor, [1.0,1.0,1.0]);
         gl.bindTexture(gl.TEXTURE_2D,Density.Ping.TextureHandle);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); 
         for (var i = 0; i < GridDepth; i++){
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
+        
+
+        //Draw obstacles 
+        /*
+        gl.bindTexture(gl.TEXTURE_2D, HireObstacles.TextureHandle);
+        gl.uniform3fv(fillColor, [0.125, 0.8, 0.75]);
+        gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
+        gl.uniform1f(size,GridDepth);
+        gl.enable(gl.DEPTH_TEST);  
+        gl.depthFunc(gl.LEQUAL);  
+        
+        for(var i =0; i< GridDepth; i++){
+            gl.uniform1f(slice, i);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+        */
+        ext.bindVertexArrayOES(sphereVAO);
         RenderSphere();
         ext.bindVertexArrayOES(QuadVao); 
         gl.flush();
@@ -81,7 +100,6 @@
     }
     function InitSphere(){
         var ext = gl.getExtension('OES_vertex_array_object');
-        var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
         var AttLocation = [];
         AttLocation.push(gl.getAttribLocation(Prg, 'Position'));
         AttLocation.push(gl.getAttribLocation(Prg, 'Normal'));
@@ -104,7 +122,6 @@
     function RenderSphere(){
         gl.useProgram(Prg);
         var ext = gl.getExtension('OES_vertex_array_object');
-        var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
         var uniLocation = new Array();
         uniLocation.push(gl.getUniformLocation(Prg, 'ModelviewProjection'));
         uniLocation.push(gl.getUniformLocation(Prg, 'ViewMatrix'));
@@ -161,7 +178,7 @@
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
       
-        //ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+       // ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
         /*
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
