@@ -138,7 +138,7 @@
 
     function CreateObstacles(dest, width ,height, depth){
         gl.bindFramebuffer(gl.FRAMEBUFFER , dest.FboHandle);
-        gl.viewport(0,0, width, height);
+        gl.viewport(0,0, width * depth, height);
         gl.clearColor(0,0,0,0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         var Prg = CreateProgram('Smoke.Vertex', 'Smoke.Fill');
@@ -149,7 +149,7 @@
         ext.bindVertexArrayOES(VAO);
         var AttLocation = [];
         AttLocation.push(gl.getAttribLocation(Prg, 'Position'));
-        var depth = gl.getUniformLocation(Prg, 'Depth');
+        var slice = gl.getUniformLocation(Prg, 'Slice');
         var Size = gl.getUniformLocation(Prg, 'Size');
     
         var AttStride = [];
@@ -161,15 +161,11 @@
         var vPlane = CreateVbo(Lposition);
         var planeVBOList = [vPlane];
         SetAttribute(planeVBOList, AttLocation, AttStride);
-        var fillcolor = gl.getUniformLocation(Prg, 'FillColor');
-        for(var i =0; i< depth; i++){
-
-            gl.uniform1f(depth, i);
-            gl.uniform1f(Size, Depth);
-            gl.uniform4fv(fillcolor, [1.0, 0.0, 0.0, 1.0]);
+        gl.uniform1f(Size, depth);
+       for(var i =0; i< depth; i++){
+            gl.uniform1f(slice, i);
             gl.drawArrays(gl.LINE_STRIP, 0, Lposition.length / 2);
-        }
-        
+        }  
         gl.deleteBuffer(vPlane);
         gl.deleteProgram(Prg);
         ext.deleteVertexArrayOES(VAO);
