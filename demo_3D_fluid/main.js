@@ -166,24 +166,22 @@
     function Update(){
         gl.viewport(0, 0, GridWidth * GridDepth, GridHeight);
         
-        Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
-        SwapSurfaces(Velocity);
+      // Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
+        //SwapSurfaces(Velocity);
         
-        Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
-        SwapSurfaces(Temperature);
+       // Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
+      //  SwapSurfaces(Temperature);
  
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
         
-        ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+      //  ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
-        
+        /*
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
         SwapSurfaces(Velocity);     
 
-       
-        
         ComputeDivergence(Velocity.Ping, Obstacles, Divergence); 
         ClearSurface(Pressure.Ping, 0);
         for (var i= 0; i < NumJacobiIterations; ++i){
@@ -193,7 +191,7 @@
 
         SubtractGradient(Velocity.Ping, Pressure.Ping, Obstacles, Velocity.Pong);
         SwapSurfaces(Velocity);
-        
+        */
         
     }
     function MouseMove(e){
