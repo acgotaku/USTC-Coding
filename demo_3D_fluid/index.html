@@ -26,7 +26,7 @@
             varying float vSize;     
             void main(void){
                 gl_Position.xy = Position.xy;
-                gl_Position.zw =vec2(1.0 - 2.0/Size * Slice, 1.0);
+                gl_Position.zw =vec2(2.0/Size * Slice - 1.0 , 1.0);
                 gLayer =Slice;
                 vSize = Size;
             }
@@ -44,9 +44,6 @@
             }
             void main(){
                 vec3 T = vec3(gl_FragCoord.xy, gLayer);
-                //vec3 fragCoord = vec3(gl_FragCoord.x , gl_FragCoord.y, gLayer);
-                //gl_FragColor = sampleAs3DTexture(Sampler, fragCoord * Scale, vSize);
-
                 float L = sampleAs3DTexture(Sampler, vec3(T.x,T.y, T.z) * Scale, vSize).r;
                 gl_FragColor = vec4(FillColor,L);
             }
@@ -142,7 +139,7 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size + texCoord.z, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
                return Color;
             }
             void main(void){
@@ -152,10 +149,10 @@
                     gl_FragColor = vec4(0);
                     return;
                 }
-
                 vec3 u = sampleAs3DTexture(VelocityTexture, InverseSize * fragCoord, vSize).xyz;
                 vec3 coord = InverseSize * (fragCoord - TimeStep * u);
                 gl_FragColor = Dissipation * sampleAs3DTexture(SourceTexture, coord, vSize);
+                //gl_FragColor = Dissipation * texture2D(SourceTexture, coord.xy);
             } 
         </script>  
         <script id="Jacobi" type="x-shader/x-fragment">  
@@ -307,7 +304,7 @@
                 if (oU.x > 0.0) vU = oU.yzx;
                 if (oD.x > 0.0) vD = oD.yzx;
 
-                gl_FragColor = vec4(HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y),0.0, 0.0, 1.0);
+                gl_FragColor = vec4(HalfInverseCellSize * (vE.x - vW.x + vN.y - vS.y + vU.z - vD.z),0.0, 0.0, 1.0);
             }
         </script> 
         <script id="Splat" type="x-shader/x-fragment">  
@@ -355,7 +352,7 @@
 
                 if (T > AmbientTemperature) {
                     float D = sampleAs3DTexture(Density, vec3(TC.x,TC.y,TC.z)* Scale, vSize).x;
-                    gl_FragColor += vec4((TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec3(0, -1, 0), 1.0);
+                    gl_FragColor += vec4((TimeStep * (T - AmbientTemperature) * Sigma - D * Kappa ) * vec3(0, 1, 0), 1.0);
                 }
             }
         </script> 

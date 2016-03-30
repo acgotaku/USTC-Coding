@@ -10,9 +10,9 @@
     }
     //c.width = c.height;
     c.addEventListener('mousemove', MouseMove, true);
-    var GridWidth =32;
-    var GridHeight = 32;
-    var GridDepth = 20;
+    var GridWidth =c.width/2;
+    var GridHeight = c.height/2;
+    var GridDepth = 1;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
@@ -40,7 +40,7 @@
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         //draw ink
-        /*
+        
         gl.uniform1f(size,GridDepth);
         gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
         gl.uniform3fv(fillColor, [1.0,1.0,1.0]);
@@ -49,7 +49,7 @@
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
-        */
+        
 
         //Draw obstacles 
         
@@ -126,7 +126,8 @@
         uniLocation.push(gl.getUniformLocation(Prg, 'DiffuseMaterial'));
         uniLocation.push(gl.getUniformLocation(Prg, 'AmbientMaterial'));
         uniLocation.push(gl.getUniformLocation(Prg, 'SpecularMaterial'));
-        uniLocation.push(gl.getUniformLocation(Prg, 'Shininess'));        var m = new matIV();
+        uniLocation.push(gl.getUniformLocation(Prg, 'Shininess'));       
+        var m = new matIV();
         var SphereData = DrawSphere(64, 64, 0.3);
         var mMatrix = m.identity(m.create());
         var vMatrix = m.identity(m.create());
@@ -163,33 +164,36 @@
              
     }
     function Update(){
-        gl.viewport(0, 0, GridWidth, GridHeight);
+        gl.viewport(0, 0, GridWidth * GridDepth, GridHeight);
         
         Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
         SwapSurfaces(Velocity);
         
         Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
         SwapSurfaces(Temperature);
-
+ 
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
-      
-       // ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+        
+        ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+        
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
-        /*
+        
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
         SwapSurfaces(Velocity);     
 
+       
         
-        ComputeDivergence(Velocity.Ping, Obstacles, Divergence);
+        ComputeDivergence(Velocity.Ping, Obstacles, Divergence); 
         ClearSurface(Pressure.Ping, 0);
         for (var i= 0; i < NumJacobiIterations; ++i){
             Jacobi(Pressure.Ping, Divergence, Obstacles, Pressure.Pong);
             SwapSurfaces(Pressure);
         }
+
         SubtractGradient(Velocity.Ping, Pressure.Ping, Obstacles, Velocity.Pong);
         SwapSurfaces(Velocity);
-        */
+        
         
     }
     function MouseMove(e){
