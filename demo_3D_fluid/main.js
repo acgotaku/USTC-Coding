@@ -12,7 +12,7 @@
     c.addEventListener('mousemove', MouseMove, true);
     var GridWidth =c.width/2;
     var GridHeight = c.height/2;
-    var GridDepth = 1;
+    var GridDepth = 2;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
