@@ -23,12 +23,14 @@
             uniform float Slice;
             uniform float Size;
             varying float gLayer;
-            varying float vSize;     
+            varying float vSize;  
+            uniform mat4 ModelviewProjection;   
             void main(void){
                 gl_Position.xy = Position.xy;
                 gl_Position.zw =vec2(2.0/Size * Slice - 1.0 , 1.0);
                 gLayer =Slice;
                 vSize = Size;
+                gl_Position = ModelviewProjection * gl_Position;
             }
         </script>  
         <script id="Render.Fill" type="x-shader/x-fragment">  

@@ -12,7 +12,7 @@
     c.addEventListener('mousemove', MouseMove, true);
     var GridWidth =c.width/2;
     var GridHeight = c.height/2;
-    var GridDepth = 1;
+    var GridDepth = 12;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
@@ -22,6 +22,7 @@
     var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
     var sphereVAO =InitSphere();
     Initialize();
+    var count =0;
     render();
     function render(){
         Update();
@@ -33,12 +34,25 @@
         var scale =gl.getUniformLocation(VisualizeProgram, 'Scale');
         var slice = gl.getUniformLocation(VisualizeProgram, "Slice");
         var size = gl.getUniformLocation(VisualizeProgram, "Size");
-
         gl.enable(gl.BLEND);
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+        var m = new matIV();
+        var mMatrix = m.identity(m.create());
+        var vMatrix = m.identity(m.create());
+        var pMatrix = m.identity(m.create());
+        var tmpMatrix = m.identity(m.create());
+        var mvpMatrix = m.identity(m.create());
+        var camPosition =[0.0, 0.0, 1.0];
+        m.lookAt(camPosition, [0,0,0] , [0, 1, 0], vMatrix);
+        m.perspective(45, c.width / c.height ,0.1, 100 , pMatrix);
+        m.multiply(pMatrix, vMatrix, tmpMatrix);
+        m.identity(mMatrix);
+        m.multiply(tmpMatrix, mMatrix, mvpMatrix);
 
+        var mvp = gl.getUniformLocation(VisualizeProgram, 'ModelviewProjection')
+        gl.uniformMatrix4fv(mvp, false, mvpMatrix);
         //draw ink
         
         gl.uniform1f(size,GridDepth);
@@ -49,7 +63,6 @@
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
-        
 
         //Draw obstacles 
         
