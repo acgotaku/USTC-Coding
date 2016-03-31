@@ -1,4 +1,4 @@
-    var run = false;
+    var run = true;
     var c = document.getElementById('canvas');
     var q = new qtnIV();
     var qt = q.identity(q.create());
@@ -12,7 +12,7 @@
     c.addEventListener('mousemove', MouseMove, true);
     var GridWidth =c.width/2;
     var GridHeight = c.height/2;
-    var GridDepth = 2;
+    var GridDepth = 1;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
@@ -166,19 +166,19 @@
     function Update(){
         gl.viewport(0, 0, GridWidth * GridDepth, GridHeight);
         
-      // Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
-        //SwapSurfaces(Velocity);
+        Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
+        SwapSurfaces(Velocity);
         
-       // Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
-      //  SwapSurfaces(Temperature);
+        Advect(Velocity.Ping, Temperature.Ping, Obstacles, Temperature.Pong, TemperatureDissipation);
+        SwapSurfaces(Temperature);
  
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
         
-      //  ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+       ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
-        /*
+        
         ApplyBuoyancy(Velocity.Ping, Temperature.Ping, Density.Ping, Velocity.Pong);
         SwapSurfaces(Velocity);     
 
@@ -191,7 +191,7 @@
 
         SubtractGradient(Velocity.Ping, Pressure.Ping, Obstacles, Velocity.Pong);
         SwapSurfaces(Velocity);
-        */
+        
         
     }
     function MouseMove(e){

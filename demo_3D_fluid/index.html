@@ -139,7 +139,7 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
                return Color;
             }
             void main(void){
@@ -167,7 +167,7 @@
             varying float vSize;
             varying float gLayer;
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
                return Color;
             }
 
@@ -217,7 +217,7 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
                return Color;
             }
 
@@ -275,7 +275,7 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
                return Color;
             }
             void main(){
@@ -339,7 +339,7 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
                return Color;
             }
 
