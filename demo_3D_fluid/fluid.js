@@ -3,13 +3,13 @@
     const  ImpulseTemperature = 10.0;
     const  ImpulseDensity = 1.0;
     const  NumJacobiIterations = 40;
-    const  TimeStep = 0.25;
+    const  TimeStep = 0.125;
     const  SmokeBuoyancy = 1.0;
     const  SmokeWeight = 0.05;
     const  GradientScale = 1.125 / CellSize;
     const  TemperatureDissipation = 0.99;
     const  VelocityDissipation = 0.99;
-    const  DensityDissipation = 0.999;
+    const  DensityDissipation = 0.9999;
 
     function Surface(FboHandle, TextureHandle, depth, NumComponents){
         var object={};
