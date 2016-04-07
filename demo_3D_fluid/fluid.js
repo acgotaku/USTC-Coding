@@ -88,7 +88,29 @@
         SetAttribute(VBOList,[0],[2]);
         return VAO;
     }
-
+    function CreateCube(){
+        var ext;
+        ext = gl.getExtension('OES_vertex_array_object');
+        if(ext == null){
+            alert('vertex array object not supported');
+            return;
+        }
+        var AttLocation = [];
+        AttLocation.push(gl.getAttribLocation(VisualizeProgram, 'Position'));
+        var AttStride = [];
+        AttStride.push(3);
+        var CubeData = cube(1.9);
+        var Position = CreateVbo(CubeData.p);
+        var Normal = CreateVbo(CubeData.n);
+        var VBOList = [Position];
+        var Index = CreateIbo(CubeData.i);
+        var CubeVAO = ext.createVertexArrayOES();
+        ext.bindVertexArrayOES(CubeVAO);
+        SetAttribute(VBOList, AttLocation, AttStride);     
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index); 
+        ext.bindVertexArrayOES(null); 
+        return CubeVAO;
+    }
     function DrawCircle(center, radius, slices){
         var pos = new Array();
         var stepSize =((2*Math.PI)/slices);

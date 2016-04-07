@@ -1,4 +1,5 @@
     var run = true;
+    var FieldOfView = 0.7;
     var c = document.getElementById('canvas');
     var q = new qtnIV();
     var qt = q.identity(q.create());
@@ -17,7 +18,7 @@
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
     const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, GridDepth / 2.0];
-    var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao , HireObstacles;
+    var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao ,CubeVao, HireObstacles;
     var gl = c.getContext('webgl');
     var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
     var sphereVAO =InitSphere();
@@ -28,7 +29,7 @@
         Update();
         var ext = gl.getExtension('OES_vertex_array_object');
         gl.useProgram(VisualizeProgram);
-        ext.bindVertexArrayOES(QuadVao); 
+        ext.bindVertexArrayOES(CubeVao); 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
         var fillColor = gl.getUniformLocation(VisualizeProgram, 'FillColor');
         var scale =gl.getUniformLocation(VisualizeProgram, 'Scale');
@@ -44,17 +45,52 @@
         var pMatrix = m.identity(m.create());
         var tmpMatrix = m.identity(m.create());
         var mvpMatrix = m.identity(m.create());
-        var camPosition =[0.0, 0.0, 1.0];
+        var camPosition =[0.0, 0.0, 7.0];
         m.lookAt(camPosition, [0,0,0] , [0, 1, 0], vMatrix);
         m.perspective(45, c.width / c.height ,0.1, 100 , pMatrix);
         m.multiply(pMatrix, vMatrix, tmpMatrix);
         m.identity(mMatrix);
+        var qMatrix = m.identity(m.create());
+        q.toMatIV(qt, qMatrix);
+        m.multiply(mMatrix, qMatrix, mMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+        var lightPosition = gl.getUniformLocation(VisualizeProgram, 'LightPosition');
+        gl.uniform3fv(lightPosition, [1.0,1.0,2.0]);
 
+        var lightIntensity = gl.getUniformLocation(VisualizeProgram, 'LightIntensity');
+        gl.uniform3fv(lightIntensity, [10.0,10.0,10.0]);
+
+        var absorption = gl.getUniformLocation(VisualizeProgram, 'Absorption');
+        gl.uniform1f(absorption, 10.0);
+        
         var mvp = gl.getUniformLocation(VisualizeProgram, 'ModelviewProjection')
         gl.uniformMatrix4fv(mvp, false, mvpMatrix);
+
+        var modelview = gl.getUniformLocation(VisualizeProgram, 'Modelview');
+        gl.uniformMatrix4fv(modelview,false, mMatrix);
+
+        var viewMatrix = gl.getUniformLocation(VisualizeProgram, 'ViewMatrix');
+        gl.uniformMatrix4fv(viewMatrix,false, vMatrix);
+
+        var projectionMatrix = gl.getUniformLocation(VisualizeProgram, 'ProjectionMatrix');
+        gl.uniformMatrix4fv(projectionMatrix,false, pMatrix);
+//{mX=-1.67798948 mY=0.000000000 mZ=3.07153893 ...}
+        var rayOrigin = gl.getUniformLocation(VisualizeProgram, 'RayOrigin');
+        m.transpose(mMatrix,tmpMatrix);
+        gl.uniform3fv(rayOrigin,[-1.67798948,0.000000000,3.07153893]);
+
+        var focalLength = gl.getUniformLocation(VisualizeProgram, 'FocalLength');
+        gl.uniform1f(focalLength, 1);
+
+        var size = gl.getUniformLocation(VisualizeProgram, "Size");
+        gl.uniform1f(size, GridDepth);
+
+        var windowSize = gl.getUniformLocation(VisualizeProgram, 'WindowSize');
+        gl.uniform2fv(windowSize, [width,height]);
+
+        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
         //draw ink
-        
+        /*
         gl.uniform1f(size,GridDepth);
         gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
         gl.uniform3fv(fillColor, [1.0,1.0,1.0]);
@@ -74,9 +110,9 @@
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
-        
+        */
         RenderSphere();
-        ext.bindVertexArrayOES(QuadVao); 
+        ext.bindVertexArrayOES(CubeVao); 
         gl.flush();
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.CULL_FACE);
@@ -93,7 +129,7 @@
         Temperature = CreateSlab(w, h, d, 1);
         Divergence = CreateSurface(w, h, d, 3);
         InitSlabOps();
-        VisualizeProgram = CreateProgram("Render.Vertex", "Render.Fill");
+        VisualizeProgram = CreateProgram("Cube.VS", "Cube.FS");
         Obstacles = CreateSurface(w, h, d, 3);
         CreateObstacles(Obstacles,w,h, d);
         w = c.width;
@@ -102,6 +138,7 @@
         HireObstacles = CreateSurface(w,h, d,3);
         CreateObstacles(HireObstacles, w, h, d);
         QuadVao = CreateQuad();  
+        CubeVao =CreateCube();
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.CULL_FACE);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -178,7 +215,8 @@
     }
     function Update(){
         gl.viewport(0, 0, GridWidth * GridDepth, GridHeight);
-        
+        var ext = gl.getExtension('OES_vertex_array_object');
+        ext.bindVertexArrayOES(QuadVao); 
         Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
         SwapSurfaces(Velocity);
         
