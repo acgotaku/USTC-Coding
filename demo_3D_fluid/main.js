@@ -29,7 +29,7 @@
         Update();
         var ext = gl.getExtension('OES_vertex_array_object');
         gl.useProgram(VisualizeProgram);
-        ext.bindVertexArrayOES(CubeVao); 
+        ext.bindVertexArrayOES(QuadVao); 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
         var fillColor = gl.getUniformLocation(VisualizeProgram, 'FillColor');
         var scale =gl.getUniformLocation(VisualizeProgram, 'Scale');
@@ -39,21 +39,25 @@
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
+       
         var m = new matIV();
         var mMatrix = m.identity(m.create());
         var vMatrix = m.identity(m.create());
         var pMatrix = m.identity(m.create());
+        var mvMatrix = m.identity(m.create());
         var tmpMatrix = m.identity(m.create());
         var mvpMatrix = m.identity(m.create());
-        var camPosition =[0.0, 0.0, 7.0];
+        var camPosition =[0.0, 0.0, 1.0];
         m.lookAt(camPosition, [0,0,0] , [0, 1, 0], vMatrix);
         m.perspective(45, c.width / c.height ,0.1, 100 , pMatrix);
         m.multiply(pMatrix, vMatrix, tmpMatrix);
         m.identity(mMatrix);
         var qMatrix = m.identity(m.create());
         q.toMatIV(qt, qMatrix);
-        m.multiply(mMatrix, qMatrix, mMatrix);
+        //m.multiply(mMatrix, qMatrix, mMatrix);
+        m.multiply(vMatrix, mMatrix, mvMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+         /*
         var lightPosition = gl.getUniformLocation(VisualizeProgram, 'LightPosition');
         gl.uniform3fv(lightPosition, [1.0,1.0,2.0]);
 
@@ -63,24 +67,35 @@
         var absorption = gl.getUniformLocation(VisualizeProgram, 'Absorption');
         gl.uniform1f(absorption, 10.0);
         
+        var scale =gl.getUniformLocation(VisualizeProgram, 'Scale');
+
         var mvp = gl.getUniformLocation(VisualizeProgram, 'ModelviewProjection')
         gl.uniformMatrix4fv(mvp, false, mvpMatrix);
 
         var modelview = gl.getUniformLocation(VisualizeProgram, 'Modelview');
-        gl.uniformMatrix4fv(modelview,false, mMatrix);
+        gl.uniformMatrix4fv(modelview,false, mvMatrix);
 
         var viewMatrix = gl.getUniformLocation(VisualizeProgram, 'ViewMatrix');
         gl.uniformMatrix4fv(viewMatrix,false, vMatrix);
 
         var projectionMatrix = gl.getUniformLocation(VisualizeProgram, 'ProjectionMatrix');
         gl.uniformMatrix4fv(projectionMatrix,false, pMatrix);
-//{mX=-1.67798948 mY=0.000000000 mZ=3.07153893 ...}
         var rayOrigin = gl.getUniformLocation(VisualizeProgram, 'RayOrigin');
-        m.transpose(mMatrix,tmpMatrix);
-        gl.uniform3fv(rayOrigin,[-1.67798948,0.000000000,3.07153893]);
+        var mvMatrix = m.identity(m.create());
+        m.transpose(mvMatrix,tmpMatrix);
+        var dataMatrix = m.identity(m.create());
+        var data = camPosition.slice();
+        data.push(0);
+        m.multiply(tmpMatrix, m.vecToMat(data,dataMatrix), tmpMatrix)
+        var array =[];
+        array.push(tmpMatrix[0]); 
+        array.push(tmpMatrix[4]);
+        array.push(tmpMatrix[8]);
+       //console.log(array);
+        gl.uniform3fv(rayOrigin,array);
 
         var focalLength = gl.getUniformLocation(VisualizeProgram, 'FocalLength');
-        gl.uniform1f(focalLength, 1);
+        gl.uniform1f(focalLength, 1.0);
 
         var size = gl.getUniformLocation(VisualizeProgram, "Size");
         gl.uniform1f(size, GridDepth);
@@ -88,9 +103,11 @@
         var windowSize = gl.getUniformLocation(VisualizeProgram, 'WindowSize');
         gl.uniform2fv(windowSize, [width,height]);
 
-        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0); */
+
         //draw ink
-        /*
+        var mvp = gl.getUniformLocation(VisualizeProgram, 'ModelviewProjection')
+        gl.uniformMatrix4fv(mvp, false, mvpMatrix);
         gl.uniform1f(size,GridDepth);
         gl.uniform3fv(scale, [1.0/width, 1.0/height, 1.0/GridDepth]);
         gl.uniform3fv(fillColor, [1.0,1.0,1.0]);
@@ -110,7 +127,7 @@
             gl.uniform1f(slice, i);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
-        */
+        
         RenderSphere();
         ext.bindVertexArrayOES(CubeVao); 
         gl.flush();
@@ -129,7 +146,8 @@
         Temperature = CreateSlab(w, h, d, 1);
         Divergence = CreateSurface(w, h, d, 3);
         InitSlabOps();
-        VisualizeProgram = CreateProgram("Cube.VS", "Cube.FS");
+       // VisualizeProgram = CreateProgram("Cube.VS", "Cube.FS");
+        VisualizeProgram = CreateProgram("Render.Vertex", "Render.Fill");
         Obstacles = CreateSurface(w, h, d, 3);
         CreateObstacles(Obstacles,w,h, d);
         w = c.width;

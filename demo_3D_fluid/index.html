@@ -40,6 +40,7 @@
             uniform vec2 WindowSize;
             uniform vec3 RayOrigin;
             varying float vSize;
+            uniform vec3 Scale;
 
             const float maxDist = sqrt(2.0);
             const int numSamples = 128;
@@ -47,6 +48,7 @@
             const int numLightSamples = 32;
             const float lscale = maxDist / float(numLightSamples);
             const float densityFactor = 10.0;
+            const int GridDepth= 1;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
                vec4 Color = texture2D(tex, vec2(texCoord.x  / size + texCoord.z, texCoord.y));
@@ -81,7 +83,7 @@
                 return t0 <= t1;
             }
             void main()
-            {   /*
+            {   
                 vec3 rayDirection;
                 rayDirection.xy = 2.0 * gl_FragCoord.xy / WindowSize - 1.0;
                 rayDirection.z = -FocalLength;
@@ -89,7 +91,7 @@
 
                 Ray eye = Ray( RayOrigin, normalize(rayDirection) );
                 AABB aabb = AABB(vec3(-1.0), vec3(+1.0));
-
+                float L;
                 float tnear, tfar;
                 IntersectBox(eye, aabb, tnear, tfar);
                 if (tnear < 0.0) tnear = 0.0;
@@ -104,37 +106,12 @@
                 float travel = distance(rayStop, rayStart);
                 float T = 1.0;
                 vec3 Lo = vec3(0.0);
-
-                for (int i=0; i < numSamples; ++i) {
-                    if(travel > 0.0){
-                        float density = GetDensity(pos);
-                        if (density <= 0.0)
-                            continue;
-
-                        T *= 1.0-density*stepSize*Absorption;
-                        if (T <= 0.01)
-                            break;
-
-                        vec3 lightDir = normalize(LightPosition-pos)*lscale;
-                        float Tl = 1.0;
-                        vec3 lpos = pos + lightDir;
-
-                        for (int s=0; s < numLightSamples; ++s) {
-                            float ld = sampleAs3DTexture(Density, lpos,vSize).x;
-                            Tl *= 1.0-Absorption*stepSize*ld;
-                            if (Tl <= 0.01) 
-                            lpos += lightDir;
-                        }
-
-                        vec3 Li = LightIntensity*Tl;
-                        Lo += Li*T*density*stepSize;
-                    }
-                    pos += step;
-                    travel -= stepSize;
-                }
-                */
-                gl_FragColor.rgb = vec3(1.0,0.0,0.0);
-                gl_FragColor.a = 1.0;
+                for(int i =0; i< GridDepth; i++){
+                    vec3 T = vec3(gl_FragCoord.xy, i);
+                    L = sampleAs3DTexture(Density, vec3(T.x,T.y, T.z) * Scale, vSize).r;   
+                }       
+                gl_FragColor.rgb = Lo;
+                gl_FragColor.a = 1.0 -T;
             }
         </script>
         <script id="Render.Vertex" type="x-shader/x-vertex">  

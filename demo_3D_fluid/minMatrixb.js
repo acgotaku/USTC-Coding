@@ -42,6 +42,25 @@ function matIV(){
 		dest[15] = M * d + N * h + O * l + P * p;
 		return dest;
 	};
+	this.vecToMat = function(vec, dest){
+		dest[0] = vec[0];
+		dest[1] = 0;
+		dest[2] = 0;
+		dest[3] = 0;
+		dest[4] = vec[1];
+		dest[5] = 0;
+		dest[6] = 0;
+		dest[7] = 0;
+		dest[8] = vec[2];
+		dest[9] = 0;
+		dest[10] = 0;
+		dest[11] = 0;
+		dest[12] = vec[3];
+		dest[13] = 0;
+		dest[14] = 0;
+		dest[15] = 0;	
+		return dest;
+	}
 	this.scale = function(mat, vec, dest){
 		dest[0]  = mat[0]  * vec[0];
 		dest[1]  = mat[1]  * vec[0];
