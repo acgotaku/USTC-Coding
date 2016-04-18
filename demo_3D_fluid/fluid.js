@@ -210,7 +210,7 @@
         var size = gl.getUniformLocation(p, "Size");
         var sourceTexture = gl.getUniformLocation(p, "SourceTexture");
         var obstaclesTexture = gl.getUniformLocation(p, "Obstacles");
-        gl.uniform3fv(inverseSize, [1.0 /GridWidth * GridDepth, 1.0/GridHeight, 1.0/GridDepth]);
+        gl.uniform3fv(inverseSize, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         gl.uniform1f(timeStep, TimeStep);
         gl.uniform1f(dissLoc, dissipation);
         gl.uniform1i(sourceTexture, 1);
@@ -233,7 +233,7 @@
         var p = Programs.ApplyBuoyancy;
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform3fv(scale, [1.0 /GridWidth * GridDepth, 1.0/GridHeight, 1.0/GridDepth]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         var tempSampler = gl.getUniformLocation(p, "Temperature");
         var inkSampler = gl.getUniformLocation(p, "Density");
         var ambTemp = gl.getUniformLocation(p, "AmbientTemperature");
@@ -272,6 +272,8 @@
         var fillColorLoc = gl.getUniformLocation(p, "FillColor");
         var slice = gl.getUniformLocation(p, "Slice");
         var size = gl.getUniformLocation(p, "Size");
+        var scale =gl.getUniformLocation(p, 'Scale');
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         gl.uniform1f(size,dest.Depth);
         gl.uniform3fv(pointLoc, position);
         gl.uniform1f(radiusLoc,SplatRadius);
@@ -291,7 +293,7 @@
         var halfCell = gl.getUniformLocation(p, "HalfInverseCellSize");
         gl.uniform1f(halfCell, 0.5/ CellSize);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform3fv(scale, [1.0 /GridWidth * GridDepth, 1.0/GridHeight, 1.0/GridDepth]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         //gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
         var sampler = gl.getUniformLocation(p, "Obstacles");
         var slice = gl.getUniformLocation(p, "Slice");
@@ -315,7 +317,7 @@
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
         //gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
-        gl.uniform3fv(scale, [1.0 /GridWidth * GridDepth, 1.0/GridHeight, 1.0/GridDepth]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
         var alpha = gl.getUniformLocation(p, "Alpha");
         var inverseBeta = gl.getUniformLocation(p, "InverseBeta");
         var dSampler = gl.getUniformLocation(p, "Divergence");
@@ -345,7 +347,7 @@
         var p = Programs.SubtractGradient;
         gl.useProgram(p);
         var scale =gl.getUniformLocation(p, 'Scale');
-        gl.uniform3fv(scale, [1.0 /GridWidth * GridDepth, 1.0/GridHeight, 1.0/GridDepth]);
+        gl.uniform3fv(scale, [1.0 /GridWidth, 1.0/GridHeight, 1.0/GridDepth]);
        // gl.uniform2fv(scale, [1.0/GridWidth, 1.0/GridHeight]);
         var gradientScale = gl.getUniformLocation(p, "GradientScale");
         gl.uniform1f(gradientScale, GradientScale);

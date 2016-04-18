@@ -54,7 +54,7 @@
         m.identity(mMatrix);
         var qMatrix = m.identity(m.create());
         q.toMatIV(qt, qMatrix);
-        //m.multiply(mMatrix, qMatrix, mMatrix);
+        m.multiply(mMatrix, qMatrix, mMatrix);
         m.multiply(vMatrix, mMatrix, mvMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
          /*
@@ -235,6 +235,7 @@
         gl.viewport(0, 0, GridWidth * GridDepth, GridHeight);
         var ext = gl.getExtension('OES_vertex_array_object');
         ext.bindVertexArrayOES(QuadVao); 
+        
         Advect(Velocity.Ping, Velocity.Ping, Obstacles, Velocity.Pong, VelocityDissipation);
         SwapSurfaces(Velocity);
         
@@ -244,7 +245,7 @@
         Advect(Velocity.Ping, Density.Ping, Obstacles, Density.Pong, DensityDissipation);
         SwapSurfaces(Density);
         
-       ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
+        ApplyImpulse(Temperature.Ping, ImpulsePosition, ImpulseTemperature);
         
         ApplyImpulse(Density.Ping, ImpulsePosition, ImpulseDensity);
         

@@ -237,11 +237,11 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
                return Color;
             }
             void main(void){
-                vec3 fragCoord = vec3(gl_FragCoord.xy, gLayer);
+                vec3 fragCoord = vec3(gl_FragCoord.x  - gLayer / InverseSize.x,gl_FragCoord.y, gLayer);
                 float solid = sampleAs3DTexture(Obstacles, InverseSize * fragCoord, vSize).x;
                 if (solid > 0.0) {
                     gl_FragColor = vec4(0);
@@ -265,12 +265,12 @@
             varying float vSize;
             varying float gLayer;
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
                return Color;
             }
 
             void main(void){
-                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+                vec3 T = vec3(gl_FragCoord.x  - gLayer / Scale.x,gl_FragCoord.y, gLayer);
 
                 // Find neighboring pressure:
                 vec4 pN = sampleAs3DTexture(Pressure, vec3(T.x,T.y+1.0, T.z)* Scale, vSize);
@@ -315,12 +315,12 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size , texCoord.y));
                return Color;
             }
 
             void main(void){
-                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+                vec3 T = vec3(gl_FragCoord.x  - gLayer / Scale.x,gl_FragCoord.y, gLayer);
 
                 vec3 oC = sampleAs3DTexture(Obstacles, vec3(T.x,T.y,T.z)* Scale, vSize).xyz;
                 if (oC.x > 0.0) {
@@ -373,11 +373,11 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size, texCoord.y));
                return Color;
             }
             void main(){
-                vec3 T = vec3(gl_FragCoord.xy, gLayer);
+                vec3 T = vec3(gl_FragCoord.x  - gLayer / Scale.x,gl_FragCoord.y, gLayer);
                 // Find neighboring velocities:
                 vec3 vN = sampleAs3DTexture(Velocity, vec3(T.x,T.y+1.0, T.z)* Scale, vSize).xyz;
                 vec3 vS = sampleAs3DTexture(Velocity, vec3(T.x,T.y-1.0, T.z)* Scale, vSize).xyz;
@@ -411,8 +411,11 @@
             uniform float Radius;
             uniform vec3 FillColor;
             varying float gLayer;
+            varying float vSize;
+            uniform vec3 Scale;
             void main(){
-                float d = distance(Point, vec3(gl_FragCoord.xy, gLayer));
+                vec3 T =vec3(gl_FragCoord.x  - gLayer / Scale.x, gl_FragCoord.y, gLayer);
+                float d = distance(Point, T);
                 if (d < Radius) {
                     float a = (Radius - d) * 0.5;
                     a = min(a, 1.0);
@@ -437,12 +440,12 @@
             varying float vSize;
 
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               vec4 Color = texture2D(tex, vec2(texCoord.x  / size / size, texCoord.y));
+               vec4 Color = texture2D(tex, vec2(texCoord.x  / size , texCoord.y));
                return Color;
             }
 
             void main(){
-                vec3 TC = vec3(gl_FragCoord.xy, gLayer);
+                vec3 TC = vec3(gl_FragCoord.x  - gLayer / Scale.x,gl_FragCoord.y, gLayer);
                 float T = sampleAs3DTexture(Temperature, vec3(TC.x,TC.y,TC.z)* Scale, vSize).r;
                 vec3 V = sampleAs3DTexture(Velocity, vec3(TC.x,TC.y,TC.z)* Scale, vSize).xyz;
 
