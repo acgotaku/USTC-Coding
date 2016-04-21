@@ -13,11 +13,11 @@
     c.addEventListener('mousemove', MouseMove, true);
     var GridWidth =c.width/2;
     var GridHeight = c.height/2;
-    var GridDepth = 12;
+    var GridDepth = 20;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
-    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, GridDepth / 2.0];
+    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, 0.0];
     var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao ,CubeVao, HireObstacles;
     var gl = c.getContext('webgl');
     var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
@@ -36,6 +36,7 @@
         var slice = gl.getUniformLocation(VisualizeProgram, "Slice");
         var size = gl.getUniformLocation(VisualizeProgram, "Size");
         gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -159,7 +160,6 @@
         CubeVao =CreateCube();
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.CULL_FACE);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         ClearSurface(Temperature.Ping, AmbientTemperature);  
     }
     function InitSphere(){

@@ -120,12 +120,15 @@
             uniform float Size;
             varying float gLayer;
             varying float vSize;  
+            varying vec3 vScale;
+            uniform vec3 Scale;
             uniform mat4 ModelviewProjection;   
             void main(void){
                 gl_Position.xy = Position.xy;
-                gl_Position.zw =vec2(2.0/Size * Slice - 1.0 , 1.0);
+                gl_Position.zw =vec2((2.0/Size * Slice - 1.0) * 0.08 , 1.0);
                 gLayer =Slice;
                 vSize = Size;
+                vScale =Scale;
                 gl_Position = ModelviewProjection * gl_Position;
             }
         </script>  
@@ -133,7 +136,7 @@
             precision mediump float;
             uniform sampler2D Sampler;
             uniform vec3 FillColor;
-            uniform vec3 Scale;
+            varying vec3 vScale;
             varying float gLayer;
             varying float vSize;
             vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
@@ -142,8 +145,9 @@
             }
             void main(){
                 vec3 T = vec3(gl_FragCoord.xy, gLayer);
-                float L = sampleAs3DTexture(Sampler, vec3(T.x,T.y, T.z) * Scale, vSize).r;
+                float L = sampleAs3DTexture(Sampler, vec3(T.x,T.y, T.z) * vScale, vSize).r;
                 gl_FragColor = vec4(FillColor,L);
+                
             }
         </script>
 
@@ -414,7 +418,7 @@
             varying float vSize;
             uniform vec3 Scale;
             void main(){
-                vec3 T =vec3(gl_FragCoord.x  - gLayer / Scale.x, gl_FragCoord.y, gLayer);
+                vec3 T =vec3(gl_FragCoord.x  - gLayer / Scale.x, gl_FragCoord.y, (gLayer - vSize /2.0) /vSize * Radius);
                 float d = distance(Point, T);
                 if (d < Radius) {
                     float a = (Radius - d) * 0.5;
