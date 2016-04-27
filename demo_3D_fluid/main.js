@@ -80,6 +80,8 @@
         gl.frontFace( gl.CCW );
         var modelview = gl.getUniformLocation(CubeProgram, 'modelViewMatrix');
         gl.uniformMatrix4fv(modelview,false, mvMatrix);
+        var modelMatrix = gl.getUniformLocation(CubeProgram, 'modelMatrix');
+        gl.uniformMatrix4fv(modelMatrix,false, mMatrix);
 
         var projectionMatrix = gl.getUniformLocation(CubeProgram, 'projectionMatrix');
         gl.uniformMatrix4fv(projectionMatrix,false, pMatrix);
@@ -88,14 +90,18 @@
         gl.uniform1f(steps,false, GridDepth);
 
         var alphaCorrection = gl.getUniformLocation(CubeProgram, 'alphaCorrection');
-        gl.uniform1f(alphaCorrection,false, 1);
+        gl.uniform1f(alphaCorrection,false, 1.0);
+        var texure = gl.getUniformLocation(CubeProgram, "texure");
+        var cubeTex = gl.getUniformLocation(CubeProgram, "cubeTex");
 
+        gl.uniform1i(texure, 0);
+        gl.uniform1i(cubeTex, 1);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, CubeFB.t);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, Density.Ping.TextureHandle);
         gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0); 
-
+        ResetState();
 
         //draw ink
         /*
