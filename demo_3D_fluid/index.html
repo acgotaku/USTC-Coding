@@ -77,8 +77,8 @@
                vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
                vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
                float zOffset = mod(texCoord.z * size, 1.0);
-              //return mix(slice0Color, slice1Color, zOffset);
-              return vec4(1.0,1.0,1.0,1.0);
+              return mix(slice0Color, slice1Color, zOffset);
+              //  return vec4(1.0,1.0,1.0,1.0);
             }
         
             void main( void ) {
@@ -123,7 +123,7 @@
                 for(int i = 0; i < MAX_STEPS; i++)
                 {
                     //Get the voxel intensity value from the 3D texture.    
-                    colorSample = sampleAs3DTexture( cubeTex,currentPosition,steps );
+                    colorSample = sampleAs3DTexture( cubeTex,vec3(currentPosition.xy,currentPosition.z  ),steps );
                   
                     //Allow the alpha correction customization
                     alphaSample = colorSample.a * alphaCorrection;
@@ -143,8 +143,8 @@
                         break;
                 }
 
-                 gl_FragColor  = vec4(accumulatedColor.rgb,alphaSample+0.1);
-                //  gl_FragColor  = vec4(1.0,1.0,1.0,1.0);
+                 //gl_FragColor  = vec4(accumulatedColor.rgb,1.0);
+                   gl_FragColor  = accumulatedColor;
                   
             }
         </script>
@@ -551,7 +551,7 @@
             varying float vSize;
             uniform vec3 Scale;
             void main(){
-                vec3 T =vec3(gl_FragCoord.x  - gLayer / Scale.x, gl_FragCoord.y, (gLayer - vSize /2.0) /vSize * Radius);
+                vec3 T =vec3(gl_FragCoord.x  - gLayer / Scale.x, gl_FragCoord.y, gLayer);
                 float d = distance(Point, T);
                 if (d < Radius) {
                     float a = (Radius - d) * 0.5;

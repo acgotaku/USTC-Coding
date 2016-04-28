@@ -1,5 +1,4 @@
     var run = true;
-    var FieldOfView = 0.7;
     var c = document.getElementById('canvas');
     var q = new qtnIV();
     var qt = q.identity(q.create());
@@ -11,13 +10,13 @@
     }
     c.height = c.width;
     c.addEventListener('mousemove', MouseMove, true);
-    var GridWidth =256;
-    var GridHeight = 256;
-    var GridDepth = 10;
+    var GridWidth =512;
+    var GridHeight = 512;
+    var GridDepth = 8;
     var width = c.width;
     var height = c.height;
     const SplatRadius = GridWidth /8.0;
-    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, 0.0];
+    const ImpulsePosition = [ GridWidth / 2, - SplatRadius / 2, GridDepth / 2];
     var VisualizeProgram, Obstacles, Velocity, Density, Pressure ,Temperature, Divergence, QuadVao ,CubeVao, HireObstacles, CubeFB,CubeProgram;
     var gl = c.getContext('webgl');
     var Prg = CreateProgram('Sphere.VS', 'Sphere.FS');
@@ -36,7 +35,8 @@
         gl.viewport(0, 0, width, height);
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-       
+        count++;
+        var rad = (count % 360) * Math.PI /180;
         var m = new matIV();
         var mMatrix = m.identity(m.create());
         var vMatrix = m.identity(m.create());
@@ -44,13 +44,14 @@
         var mvMatrix = m.identity(m.create());
         var tmpMatrix = m.identity(m.create());
         var mvpMatrix = m.identity(m.create());
-        var camPosition =[0.0, 0.0, 6.0];
+        var camPosition =[0.0, 0.0, 2.0];
         m.lookAt(camPosition, [0,0,0] , [0, 1, 0], vMatrix);
         m.perspective(45, c.width / c.height ,0.1, 100 , pMatrix);
         m.multiply(pMatrix, vMatrix, tmpMatrix);
         m.identity(mMatrix);
         var qMatrix = m.identity(m.create());
-        q.toMatIV(qt, qMatrix);
+       // q.toMatIV(qt, qMatrix);
+       // m.rotate(mMatrix,rad, [0, 1, 0], mMatrix);
         m.multiply(mMatrix, qMatrix, mMatrix);
         m.multiply(vMatrix, mMatrix, mvMatrix);
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
@@ -72,7 +73,7 @@
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.viewport(0, 0, width, height);
-        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
@@ -87,10 +88,10 @@
         gl.uniformMatrix4fv(projectionMatrix,false, pMatrix);
 
         var steps = gl.getUniformLocation(CubeProgram, 'steps');
-        gl.uniform1f(steps,false, GridDepth);
+        gl.uniform1f(steps, GridDepth);
 
         var alphaCorrection = gl.getUniformLocation(CubeProgram, 'alphaCorrection');
-        gl.uniform1f(alphaCorrection,false, 1.0);
+        gl.uniform1f(alphaCorrection, 1.0);
         var texure = gl.getUniformLocation(CubeProgram, "texure");
         var cubeTex = gl.getUniformLocation(CubeProgram, "cubeTex");
 
