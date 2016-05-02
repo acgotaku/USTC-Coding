@@ -82,8 +82,6 @@ window.Fluid = (function () {
                     -1.0, 1.0,
                      1.0, 1.0
             ];
-
-
             var VAO = ext.createVertexArrayOES();
             ext.bindVertexArrayOES(VAO);
             var Plane = Lib.CreateVbo(position);
@@ -92,7 +90,6 @@ window.Fluid = (function () {
             return VAO; 
         },
         CreateCube:function(){
-
             var AttLocation = [];
             AttLocation.push(0);
             var AttStride = [];
@@ -159,7 +156,7 @@ window.Fluid = (function () {
             gl.viewport(0,0, width * depth, height);
             gl.clearColor(0,0,0,0);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            var Prg = Lib.CreateProgram('Smoke.Vertex', 'Smoke.Fill');
+            var Prg = Lib.CreateProgram('Obstacle.Vertex', 'Obstacle.Fill');
             // locationの初期化
             gl.useProgram(Prg);
             var VAO = ext.createVertexArrayOES();

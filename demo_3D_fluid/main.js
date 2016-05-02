@@ -2,9 +2,6 @@ var GridWidth =512;
 var GridHeight = 512;
 var GridDepth = 8;
 window.Main = (function () {
-    var GridWidth =512;
-    var GridHeight = 512;
-    var GridDepth = 8;
     const  AmbientTemperature = 0.0;
     const  ImpulseTemperature = 10.0;
     const  ImpulseDensity = 1.0;
@@ -96,7 +93,6 @@ window.Main = (function () {
             var pMatrix = m.identity(m.create());
             var mvMatrix = m.identity(m.create());
             var tmpMatrix = m.identity(m.create());
-            var mvpMatrix = m.identity(m.create());
             var camPosition =[0.0, 0.0, 2.0];
             m.lookAt(camPosition, [0,0,0] , [0, 1, 0], vMatrix);
             m.perspective(45, c.width / c.height ,0.1, 100 , pMatrix);
@@ -107,7 +103,6 @@ window.Main = (function () {
            // m.rotate(mMatrix,rad, [0, 1, 0], mMatrix);
             m.multiply(mMatrix, qMatrix, mMatrix);
             m.multiply(vMatrix, mMatrix, mvMatrix);
-            m.multiply(tmpMatrix, mMatrix, mvpMatrix);
             gl.enable(gl.DEPTH_TEST);
             gl.depthFunc(gl.LEQUAL);
             gl.enable(gl.CULL_FACE);
@@ -119,8 +114,7 @@ window.Main = (function () {
             gl.uniformMatrix4fv(projectionMatrix,false, pMatrix);
 
             gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0); 
-            Fluid.ResetState();
-     
+            gl.flush();
             gl.useProgram(CubeProgram);
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);  
             gl.enable(gl.BLEND);
@@ -155,12 +149,7 @@ window.Main = (function () {
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_2D, Density.Ping.TextureHandle);
             gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0); 
-            Fluid.ResetState();
-            ext.bindVertexArrayOES(CubeVao); 
             gl.flush();
-            gl.disable(gl.DEPTH_TEST);
-            gl.disable(gl.CULL_FACE);
-            gl.disable(gl.BLEND);
             if(run){requestAnimationFrame(Main.Render);}
         }
     };
