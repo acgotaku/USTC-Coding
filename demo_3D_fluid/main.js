@@ -1,6 +1,6 @@
 var GridWidth =512;
 var GridHeight = 512;
-var GridDepth = 8;
+var GridDepth = 3;
 window.Main = (function () {
     const  AmbientTemperature = 0.0;
     const  ImpulseTemperature = 10.0;
@@ -100,7 +100,7 @@ window.Main = (function () {
             m.identity(mMatrix);
             var qMatrix = m.identity(m.create());
            // q.toMatIV(qt, qMatrix);
-           // m.rotate(mMatrix,rad, [0, 1, 0], mMatrix);
+          //  m.rotate(mMatrix,rad, [0, 1, 0], mMatrix);
             m.multiply(mMatrix, qMatrix, mMatrix);
             m.multiply(vMatrix, mMatrix, mvMatrix);
             gl.enable(gl.DEPTH_TEST);

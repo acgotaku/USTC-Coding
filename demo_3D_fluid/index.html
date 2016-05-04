@@ -48,24 +48,45 @@
             uniform float steps;
             uniform float alphaCorrection;
             const int MAX_STEPS = 512;
-            
-            //Acts like a texture3D using Z slices and trilinear filtering.
-            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
-               float sliceSize = 1.0 / size;                         // space of 1 slice
-               float slicePixelSize = sliceSize / size;              // space of 1 pixel
-               float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
-               float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
-               float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
-               float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
-               float s0 = xOffset + (zSlice0 * sliceSize);
-               float s1 = xOffset + (zSlice1 * sliceSize);
-               vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
-               vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
-               float zOffset = mod(texCoord.z * size, 1.0);
-              return mix(slice0Color, slice1Color, zOffset);
-              //  return vec4(1.0,1.0,1.0,1.0);
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size )
+            {
+                vec4 colorSlice1, colorSlice2;
+                vec2 texCoordSlice1, texCoordSlice2;
+
+                //The z coordinate determines which Z slice we have to look for.
+                //Z slice number goes from 0 to 255.
+                float zSliceNumber1 = floor(texCoord.z  * size);
+                
+                //As we use trilinear we go the next Z slice.
+                float zSliceNumber2 = min( zSliceNumber1 + 1.0, size); //Clamp to 255
+                
+                //The Z slices are stored in a matrix of 16x16 of Z slices.
+                //The original UV coordinates have to be rescaled by the tile numbers in each row and column.
+                texCoord.x /= size;
+
+                texCoordSlice1 = texCoordSlice2 = texCoord.xy;
+                                            
+                //Add an offset to the original UV coordinates depending on the row and column number.
+                texCoordSlice1.x += (zSliceNumber1 / size);
+                    
+                texCoordSlice2.x += (zSliceNumber2 / size);
+                
+                //Get the opacity value from the 2D texture.
+                //Bilinear filtering is done at each texture2D by default.
+                colorSlice1 = texture2D( tex, texCoordSlice1 );
+                colorSlice2 = texture2D( tex, texCoordSlice2 );
+                
+                //Based on the opacity obtained earlier, get the RGB color in the transfer function texture.
+              //  colorSlice1.rgb = texture2D( transferTex, vec2( colorSlice1.a, 1.0) ).rgb;
+              //  colorSlice2.rgb = texture2D( transferTex, vec2( colorSlice2.a, 1.0) ).rgb;
+                
+                //How distant is zSlice1 to ZSlice2. Used to interpolate between one Z slice and the other.
+                float zDifference = mod(texCoord.z * size, 1.0);
+
+                //Finally interpolate between the two intermediate colors of each Z slice.
+                return mix(colorSlice1, colorSlice2, zDifference) ;
             }
-        
+
             void main( void ) {
 
                 //Transform the coordinates it from [-1;1] to [0;1]
