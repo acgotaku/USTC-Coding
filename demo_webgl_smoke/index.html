@@ -1,0 +1,788 @@
+<html>  
+    <head>  
+        <title>WebGL Particle Fluid Simulation </title>
+        <meta charset='utf-8'>
+        <script src="minMatrixb.js" type="text/javascript"></script>  
+        <script src="gl-matrix-min.js" type="text/javascript"></script>  
+        <script src="lib.js" type="text/javascript"></script>  
+        <script id="Fluid.VS" type="x-shader/x-vertex">
+            attribute vec2 aVertexPosition;
+            attribute vec2 aTextureCoord;
+
+            uniform mat4 uPerspectiveMatrix;
+            uniform mat4 uModelMatrix;
+            uniform mat4 uViewMatrix;
+
+            varying vec2 vTextureCoord;
+
+            void main(void) {
+                vTextureCoord = aTextureCoord;
+                gl_Position = uPerspectiveMatrix * uViewMatrix * uModelMatrix * vec4(aVertexPosition.xy, 0, 1.0);
+            }
+        </script>
+         <script id="showTexture.VS" type="x-shader/x-vertex">
+            attribute vec2 aVertexPosition;
+            attribute vec2 aTextureCoord;
+
+            uniform mat4 uPerspectiveMatrix;
+            uniform mat4 uModelMatrix;
+            uniform mat4 uViewMatrix;
+
+            varying vec2 vTextureCoord;
+
+            void main(void) {
+                vTextureCoord = aTextureCoord;
+                gl_Position = uPerspectiveMatrix * uViewMatrix * uModelMatrix * vec4(aVertexPosition.xy, 0, 1.0);
+            }
+        </script>       
+        <script id="addSource.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uVelDensityTexture;
+            varying vec2 vTextureCoord;
+
+            uniform vec4 uTime;
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            void main(void) {
+                vec4 value =  texture2D(uVelDensityTexture, vTextureCoord);
+                vec3 is = uvToIndexSpace(vTextureCoord);
+
+                if (0.0 < is.y && is.y < 6.0 && abs(is.x - 32.0) < 8.0 && abs(is.z - 32.0) < 8.0) {
+                    value.w += 0.001;
+                }
+                if (0.0 < is.y && is.y < 3.0 && abs(is.x - 32.0) < 2.0 && abs(is.z - 32.0) < 2.0) {
+                    value.y += 0.05;
+                }
+
+                gl_FragColor = vec4(value);
+            }
+
+        </script>
+        <script id="advectDensityStep.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uVelDensityTexture;
+
+            uniform vec4 uTsWs;
+            uniform vec4 uWsTs;
+            uniform vec4 uTsIs;
+            uniform vec4 uIsTs;
+            uniform vec4 uOption;
+
+            varying vec2 vTextureCoord;
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+
+            void main(void) {
+                vec4 value =  texture2D(uVelDensityTexture, vTextureCoord);
+
+                vec3 wsPos = uvToIndexSpace(vTextureCoord) * uIsTs.xyz * uTsWs.xyz; // scaling
+                float dt = uOption.x;
+
+                vec3 wsVel = value.xyz;
+                vec3 wsPrevPos = wsPos - dt * wsVel;
+
+                vec3 ts = wsPrevPos * uWsTs.xyz;
+
+
+                vec3 is = ts * uTsIs.xyz - vec3(0.5, 0.5, 0.5);
+                vec3 iIs0 = floor(is);
+                vec3 iIs1 = iIs0 + vec3(1, 1, 1);
+                vec3 st1 = is - iIs0;
+                vec3 st0 = vec3(1, 1, 1) - st1;
+
+                iIs0 += vec3(0.5, 0.5, 0.5);
+                iIs1 += vec3(0.5, 0.5, 0.5);
+
+                vec4 v000 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v100 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v010 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v110 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v001 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v101 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v011 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v111 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                
+                float finalDensity = 
+                    st0.x * (
+                        st0.y * (st0.z * v000.w + st1.z * v001.w) +
+                        st1.y * (st0.z * v010.w + st1.z * v011.w)) +
+                    st1.x * (
+                        st0.y * (st0.z * v100.w + st1.z * v101.w) +
+                        st1.y * (st0.z * v110.w + st1.z * v111.w));
+
+                gl_FragColor = vec4(value.xyz, finalDensity);
+            }
+        </script>
+        <script id="advectVelStep.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uVelDensityTexture;
+
+            uniform vec4 uTsWs;
+            uniform vec4 uWsTs;
+            uniform vec4 uTsIs;
+            uniform vec4 uIsTs;
+            uniform vec4 uOption;
+
+            varying vec2 vTextureCoord;
+
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+            void main(void) {
+                vec4 value =  texture2D(uVelDensityTexture, vTextureCoord);
+
+                vec3 wsPos = uvToIndexSpace(vTextureCoord) * uIsTs.xyz * uTsWs.xyz; // scaling
+                float dt = uOption.x;
+
+                vec3 wsVel = value.xyz;
+                vec3 wsPrevPos = wsPos - dt * wsVel;
+
+                vec3 ts = wsPrevPos * uWsTs.xyz;
+
+
+                vec3 is = ts * uTsIs.xyz - vec3(0.5, 0.5, 0.5);
+                vec3 iIs0 = floor(is);
+                vec3 iIs1 = iIs0 + vec3(1, 1, 1);
+                vec3 st1 = is - iIs0;
+                vec3 st0 = vec3(1, 1, 1) - st1;
+
+                iIs0 += vec3(0.5, 0.5, 0.5);
+                iIs1 += vec3(0.5, 0.5, 0.5);
+                vec4 v000 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v100 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v010 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v110 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v001 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v101 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v011 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v111 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                
+                vec3 finalVelocity = 
+                    st0.x * (
+                        st0.y * (st0.z * v000.xyz + st1.z * v001.xyz) +
+                        st1.y * (st0.z * v010.xyz + st1.z * v011.xyz)) +
+                    st1.x * (
+                        st0.y * (st0.z * v100.xyz + st1.z * v101.xyz) +
+                        st1.y * (st0.z * v110.xyz + st1.z * v111.xyz));
+
+                gl_FragColor = vec4(finalVelocity.xyz, value.w);
+            }
+        </script>
+        <script id="setupPressure.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uVelDensityTexture;
+            uniform sampler2D uPressureTexture;
+
+            uniform vec4 uOption;
+            uniform vec4 uInvResolution;
+
+            varying vec2 vTextureCoord;
+
+
+            uniform vec4 uTsIs;
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+
+            void main(void) {
+                vec3 is = uvToIndexSpace(vTextureCoord);
+                
+                vec4 vx0 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3( 1, 0, 0)));
+                vec4 vx1 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3(-1, 0, 0)));
+                vec4 vy0 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3( 0, 1, 0)));
+                vec4 vy1 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3( 0,-1, 0)));
+                vec4 vz0 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3( 0, 0, 1)));
+                vec4 vz1 =  texture2D(uVelDensityTexture, IndexSpaceToUV(is, vec3( 0, 0,-1)));
+                float h = uOption.y;
+                float div = -0.5 * h * (
+                    vx0.x - vx1.x + 
+                    vy0.y - vy1.y + 
+                    vz0.z - vz1.z);
+                float prevPressure = texture2D(uPressureTexture, vTextureCoord).y;
+
+                gl_FragColor = vec4(div, prevPressure, 0, 0);
+            }
+
+        </script>
+        <script id="showTexture.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uSampler;
+
+            varying vec2 vTextureCoord;
+
+            void main(void) {
+              gl_FragColor = vec4(abs(texture2D(uSampler, vTextureCoord).www) * 1.0, 1);
+            }
+
+        </script>
+        <script id="renderVolume.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            varying vec2 vTextureCoord;
+
+            uniform vec4 uOption;
+
+            uniform vec4 uProjParams;
+            uniform mat4 uInvViewMatrix;
+            uniform vec4 uCameraParams;
+
+            uniform sampler2D uVelDensityTexture;
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+
+            // http://bassser.tumblr.com/post/11626074256/reconstructing-position-from-depth-buffer
+            vec3 reconstructPosition(in float p_depth, in vec2 p_ndc, in vec4 p_projParams)
+            { 
+                float depth = p_depth * 2.0 - 1.0;
+                float viewDepth = p_projParams.w / (depth - p_projParams.z);
+
+                return vec3((p_ndc * viewDepth) / p_projParams.xy, viewDepth);
+            }
+
+            float sampleDensity(vec3 is) {
+                vec3 iIs0 = floor(is);
+                return texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs0.z), vec3(0, 0, 0))).w;
+            }
+
+            // Very heavy!
+            float sampleDensityBilinear(vec3 is) {
+                vec3 iIs0 = floor(is);
+                vec3 iIs1 = iIs0 + vec3(1, 1, 1);
+                vec3 st1 = is - iIs0;
+                vec3 st0 = vec3(1, 1, 1) - st1;
+
+                iIs0 += vec3(0.5, 0.5, 0.5);
+                iIs1 += vec3(0.5, 0.5, 0.5);
+
+                vec4 v000 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v100 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v010 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v110 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs0.z), vec3(0, 0, 0)));
+                vec4 v001 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v101 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs0.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v011 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs0.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                vec4 v111 = texture2D(uVelDensityTexture, IndexSpaceToUV(vec3(iIs1.x, iIs1.y, iIs1.z), vec3(0, 0, 0)));
+                
+                float d = 
+                    st0.x * (
+                        st0.y * (st0.z * v000.w + st1.z * v001.w) +
+                        st1.y * (st0.z * v010.w + st1.z * v011.w)) +
+                    st1.x * (
+                        st0.y * (st0.z * v100.w + st1.z * v101.w) +
+                        st1.y * (st0.z * v110.w + st1.z * v111.w));
+                return d;
+            }
+
+            float rand(vec2 co){
+                return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+            }
+
+            bool checkInside(vec3 org, vec3 pmin, vec3 pmax) {
+                if (org.x < pmin.x || org.y < pmin.y || org.z < pmin.z ||
+                    org.x > pmax.x || org.y > pmax.y || org.z > pmax.z)
+                    return false;
+                return true;
+            }
+
+            vec2 checkIntersect(vec3 org, vec3 dir, vec3 pmin, vec3 pmax) {
+                vec2 t;
+                float t0 = 0.0, t1 = 100000.0;
+
+                for (int i = 0; i < 3; ++i) {
+                    float invRayDir = 1.0 / dir[i];
+                    float tNear = (pmin[i] - org[i]) * invRayDir;
+                    float tFar  = (pmax[i] - org[i]) * invRayDir;
+
+                    if (tNear > tFar) {
+                        float tmp = tNear;
+                        tNear = tFar;
+                        tFar = tmp;
+                    }
+                    t0 = tNear > t0 ? tNear : t0;
+                    t1 = tFar  < t1 ? tFar  : t1;
+                    if (t0 > t1) return vec2(-1, -1);
+                }
+                return vec2(t0, t1);
+            }
+
+            #define N 32.0
+
+            vec3 wsToIs(vec3 ws) {
+                return ((ws / vec3(4.0, 4.0, 4.0)) + vec3(1, 0, 1)) * 0.5 * uSimResolution.xyz + vec3(0.5, 0.5, 0.5);
+            }
+
+            void main(void) {
+                // Constants
+                vec3 kLightVec = normalize(vec3(0.3, 0.7, 0.2));
+                float densityScale = uOption.x;
+                vec3 pMin = vec3(-4, 0, -4);
+                vec3 pMax = vec3(4, 8, 4);
+                float planeSize = 25.0;
+                vec3 finalColor = vec3(0.5, 0.5, 0.5);
+                float sunPower = 1.0;
+
+                vec3 vsPos = reconstructPosition(0.0, vTextureCoord * vec2(2.0, -2.0) + vec2(-1.0, 1.0), uProjParams);
+                vec3 wsPos = (uInvViewMatrix * vec4(vsPos, 1)).xyz;
+                vec3 wsDir = normalize(wsPos - uCameraParams.xyz);
+                vec3 wsOrg = uCameraParams.xyz;
+                float tPlane = -dot(wsOrg, vec3(0, 1, 0)) / dot(wsDir, vec3(0, 1, 0));
+
+                vec3 wsInter = wsOrg + tPlane * wsDir;
+                if (tPlane > 0.0 && abs(wsInter.x) < planeSize && abs(wsInter.z)  < planeSize)  {
+                    // col = vec4(wsOrg + t * wsDir, 1).xyz;
+                    finalColor = vec3(0.2, 0.2, 0.2);
+                }
+
+                // Shadow
+                float shadowTransmittance = 1.0;
+                {
+                    vec3 wsShadowOrg = wsOrg + tPlane * wsDir;
+                    vec2 shadowTp = checkIntersect(wsShadowOrg, kLightVec, pMin, pMax);
+                    wsShadowOrg = wsShadowOrg + shadowTp.x * kLightVec;
+
+                    float length = shadowTp.y - shadowTp.x;
+                    for (float j = 0.0; j < N; j += 1.0) {
+                        vec3 wsDPos = wsShadowOrg + (length / N) * (j + 0.5) * kLightVec;
+
+                        if (!checkInside(wsDPos, pMin, pMax) || length <= 0.0)
+                            break;
+
+                        vec3 isDPos = ((wsDPos / vec3(4.0, 4.0, 4.0)) + vec3(1, 0, 1)) * 0.5 * uSimResolution.xyz + vec3(0.5, 0.5, 0.5);
+                        float ddensity = densityScale * sampleDensity(isDPos);
+
+                        shadowTransmittance *= exp(-ddensity * (length / N));
+                    }
+                }
+
+                // Volume ray marching 
+                float sum = 0.0;
+                float transmittance = 1.0;
+                {
+                    vec2 tp = checkIntersect(wsOrg, wsDir, pMin, pMax);
+                    wsOrg = wsOrg + tp.x * wsDir;
+
+                    float length = tp.y - tp.x;
+                    for (float i = 0.0; i < N; i += 1.0) {
+                        float nt = length / N * (i + (1.0 + rand(vec2(i + wsPos.z, uOption.y + wsPos.x + wsPos.y))) * 0.5);
+                        vec3 wsCurrentPos = wsOrg + nt * wsDir;
+
+                        if (!checkInside(wsCurrentPos, pMin, pMax) || length <= 0.0)
+                            break;
+
+                        vec3 isPos = wsToIs(wsCurrentPos);
+                        float density = densityScale * sampleDensity(isPos);
+
+                        transmittance *= exp(-density * (length / N));
+
+                        float sunTransmittance = 1.0;
+                        vec3 wsSunOrg = wsCurrentPos;
+                        vec2 sunTp = checkIntersect(wsSunOrg, kLightVec, pMin, pMax);
+                        wsSunOrg = wsSunOrg + sunTp.x * kLightVec;
+                        float sunLength = sunTp.y - sunTp.x;
+                        for (float j = 0.0; j < N; j += 1.0) {
+                            vec3 wsDPos = wsSunOrg + (sunLength / N) * (j + 0.5) * kLightVec;
+                            vec3 isDPos = wsToIs(wsDPos);
+                            float ddensity = densityScale * sampleDensity(isDPos);
+
+                            sunTransmittance *= exp(-ddensity * (sunLength / N));
+                        }
+                        sum += (transmittance * sunPower * sunTransmittance * density) * (length / N);
+                    }
+                }
+
+                vec3 result = vec3(shadowTransmittance * transmittance * finalColor) + vec3(sum, sum, sum);
+                result = pow(result, vec3(0.45, 0.45, 0.45));
+                gl_FragColor = vec4(result, 1);
+            }
+        </script>
+        <script id="showTextureRGB.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uSampler;
+
+            varying vec2 vTextureCoord;
+
+            void main(void) {
+              gl_FragColor = vec4(abs(texture2D(uSampler, vTextureCoord).rgb) * 1.0, 1);
+            }
+        </script>
+        <script id="solvePressure.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uPressureTexture;
+
+            uniform vec4 uOption;
+            uniform vec4 uInvResolution;
+
+            varying vec2 vTextureCoord;
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+            void main(void) {
+                vec3 is = uvToIndexSpace(vTextureCoord);
+
+                float p0 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 1, 0, 0))).y;
+                float p1 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3(-1, 0, 0))).y;
+                float p2 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 1, 0))).y;
+                float p3 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0,-1, 0))).y;
+                float p4 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 0, 1))).y;
+                float p5 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 0,-1))).y;
+                float div = texture2D(uPressureTexture, vTextureCoord).x;
+
+                float newp = (div + p0 + p1 + p2 + p3 + p4 + p5) / 6.0;
+
+                gl_FragColor = vec4(div, newp, 0, 0);
+            }
+
+        </script>
+        <script id="updateVelocity.FS" type="x-shader/x-fragment">
+            precision mediump float;
+
+            uniform sampler2D uVelDensityTexture;
+            uniform sampler2D uPressureTexture;
+
+            uniform vec4 uOption;
+            uniform vec4 uInvResolution;
+
+            varying vec2 vTextureCoord;
+
+
+            uniform vec4 uTexResolution;
+            uniform vec4 uSimResolution;
+            uniform vec4 uSliceResolution;
+            vec3 uvToIndexSpace(vec2 uv) {
+                
+                vec2 globalIndex = uv * uTexResolution.xy;
+                vec2 iSliceIndex = floor(globalIndex / uSimResolution.xy);
+
+                float iIndexZ = floor(iSliceIndex.y * uSliceResolution.x  + iSliceIndex.x + 0.5);
+                vec2 localIndex = floor(mod(globalIndex, uSimResolution.xy));
+                
+                return vec3(localIndex, float(iIndexZ)) + vec3(0.5, 0.5, 0.5);
+            }
+
+            vec2 IndexSpaceToUV(vec3 is, vec3 offset) {
+                vec3 isOrg = is + offset;
+                isOrg = clamp(isOrg, vec3(0.5, 0.5, 0.5), uSimResolution.xyz - vec3(0.5, 0.5, 0.5));
+
+                float iSliceX = floor(mod(isOrg.z, uSliceResolution.x));
+                float iSliceY = floor(isOrg.z / uSliceResolution.x);
+                
+                return (uSimResolution.xy * vec2(iSliceX, iSliceY) + vec2(isOrg.x, isOrg.y)) / uTexResolution.xy;
+            }
+
+            void main(void) {
+                vec3 is = uvToIndexSpace(vTextureCoord);
+
+                float p0 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 1, 0, 0))).y;
+                float p1 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3(-1, 0, 0))).y;
+                float p2 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 1, 0))).y;
+                float p3 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0,-1, 0))).y;
+                float p4 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 0, 1))).y;
+                float p5 =  texture2D(uPressureTexture, IndexSpaceToUV(is, vec3( 0, 0,-1))).y;
+
+                float h = uOption.y;
+                vec4 vel = texture2D(uVelDensityTexture, vTextureCoord);
+                vel.x -= 0.5 * (p0 - p1) / h;
+                vel.y -= 0.5 * (p2 - p3) / h;
+                vel.z -= 0.5 * (p4 - p5) / h;
+
+                gl_FragColor = vec4(vel.xyz, vel.w);
+            }
+
+        </script>
+        <script id="FirstPass.VS" type="x-shader/x-vertex">
+            attribute vec3 position;
+            varying vec3 worldSpaceCoords;
+            uniform mat4 modelViewMatrix;
+            uniform mat4 projectionMatrix;
+            void main()
+            {
+                //Set the world space coordinates of the back faces vertices as output.
+                worldSpaceCoords = position + vec3(0.5, 0.5, 0.5); //move it from [-0.5;0.5] to [0,1]
+                gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+            }
+        </script>
+        
+        <script id="FirstPass.FS" type="x-shader/x-fragment">
+            precision mediump float;
+            varying vec3 worldSpaceCoords;
+
+            void main()
+            {
+                //The fragment's world space coordinates as fragment output.
+                gl_FragColor = vec4( worldSpaceCoords.x , worldSpaceCoords.y, worldSpaceCoords.z, 1 );
+            }
+        </script>
+        <script id="SecondPass.VS" type="x-shader/x-vertex">
+            attribute vec3 position;
+            varying vec3 worldSpaceCoords;
+            varying vec4 projectedCoords;
+            uniform mat4 modelViewMatrix;
+            uniform mat4 modelMatrix;
+            uniform mat4 projectionMatrix;
+            void main()
+            {
+                worldSpaceCoords = (modelMatrix * vec4(position + vec3(0.5, 0.5,0.5), 1.0 )).xyz;
+                gl_Position = projectionMatrix *  modelViewMatrix * vec4( position, 1.0 );
+                projectedCoords =  projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+            }
+        </script>
+        <script id="SecondPass.FS" type="x-shader/x-fragment">
+            precision mediump float;
+            varying vec3 worldSpaceCoords;
+            varying vec4 projectedCoords;
+            uniform sampler2D texure, cubeTex;
+            uniform float steps;
+            uniform float alphaCorrection;
+            const int MAX_STEPS = 512;
+            vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size )
+            {
+                vec4 colorSlice1, colorSlice2;
+                vec2 texCoordSlice1, texCoordSlice2;
+                float slices = size * size -1.0;
+                //The z coordinate determines which Z slice we have to look for.
+                //Z slice number goes from 0 to 255.
+                float zSliceNumber1 = floor(texCoord.z  * slices);
+                
+                //As we use trilinear we go the next Z slice.
+                float zSliceNumber2 = min( zSliceNumber1 + 1.0, slices); //Clamp to 255
+                
+                //The Z slices are stored in a matrix of 16x16 of Z slices.
+                //The original UV coordinates have to be rescaled by the tile numbers in each row and column.
+                texCoord.xy /= size;
+
+                texCoordSlice1 = texCoordSlice2 = texCoord.xy;
+                                            
+                //Add an offset to the original UV coordinates depending on the row and column number.
+                texCoordSlice1.x += (mod(zSliceNumber1, size ) / size);
+                texCoordSlice1.y += floor((slices - zSliceNumber1) / size) / size;
+                    
+                texCoordSlice2.x += (mod(zSliceNumber2, size ) / size);
+                texCoordSlice2.y += floor((slices - zSliceNumber2) / size) / size;
+                
+                //Get the opacity value from the 2D texture.
+                //Bilinear filtering is done at each texture2D by default.
+                colorSlice1 = texture2D( tex, texCoordSlice1 );
+                colorSlice2 = texture2D( tex, texCoordSlice2 );
+                
+                //Based on the opacity obtained earlier, get the RGB color in the transfer function texture.
+               // colorSlice1.rgb = texture2D( transferTex, vec2( colorSlice1.a, 1.0) ).rgb;
+                // colorSlice2.rgb = texture2D( transferTex, vec2( colorSlice2.a, 1.0) ).rgb;
+                
+                //How distant is zSlice1 to ZSlice2. Used to interpolate between one Z slice and the other.
+                float zDifference = mod(texCoord.z * slices, 1.0);
+
+                //Finally interpolate between the two intermediate colors of each Z slice.
+                return mix(colorSlice1, colorSlice2, zDifference) ;
+            }
+
+            void main( void ) {
+
+                //Transform the coordinates it from [-1;1] to [0;1]
+                vec2 texc = vec2(((projectedCoords.x / projectedCoords.w) + 1.0 ) / 2.0,
+                                ((projectedCoords.y / projectedCoords.w) + 1.0 ) / 2.0 );
+
+                //The back position is the world space position stored in the texture.
+                vec3 backPos = texture2D(texure, texc).xyz;
+
+                //The front position is the world space position of the second render pass.
+                vec3 frontPos = worldSpaceCoords;
+
+                //The direction from the front position to back position.
+                vec3 dir = backPos - frontPos;
+                
+                float rayLength = length(dir); 
+                
+                //Calculate how long to increment in each step.
+                float delta = 1.0 / steps;
+
+                //The increment in each direction for each step.
+                vec3 deltaDirection = normalize(dir) * delta;
+                float deltaDirectionLength = length(deltaDirection);
+
+                //Start the ray casting from the front position.
+                vec3 currentPosition = frontPos;
+                
+                //The color accumulator.
+                vec4 accumulatedColor = vec4(0.0);
+                
+                //The alpha value accumulated so far.
+                float accumulatedAlpha = 0.0;
+                
+                //How long has the ray travelled so far.
+                float accumulatedLength = 0.0;
+                
+                vec4 colorSample;
+                float alphaSample;
+                //Perform the ray marching iterations
+                for(int i = 0; i < MAX_STEPS; i++)
+                {
+                    //Get the voxel intensity value from the 3D texture.    
+                    colorSample = sampleAs3DTexture( cubeTex,vec3(currentPosition.xy,currentPosition.z  ),steps );
+                  
+                    //Allow the alpha correction customization
+                    alphaSample = colorSample.a * alphaCorrection;
+
+                    //Perform the composition.
+                    accumulatedColor += (1.0 - accumulatedAlpha) * colorSample * alphaSample;
+                    
+                    //Store the alpha accumulated so far.
+                    accumulatedAlpha += alphaSample;
+                    
+                    //Advance the ray.
+                    currentPosition += deltaDirection;
+                    accumulatedLength += deltaDirectionLength;
+                              
+                    //If the length traversed is more than the ray length, or if the alpha accumulated reaches 1.0 then exit.
+                    if(accumulatedLength >= rayLength || accumulatedAlpha >= 1.0 )
+                        break;
+                }
+
+                 //gl_FragColor  = vec4(accumulatedColor.rgb,1.0);
+                   gl_FragColor  = accumulatedColor;
+                  
+            }
+        </script>
+        <style>
+            * {
+                margin:0; padding:0;
+                text-align: center;
+            }
+            html, body { width:100%; height:100%; }
+        </style>
+    </head>  
+    <body>  
+        <canvas id="canvas"></canvas>
+        <script src="main.js" type="text/javascript"></script>  
+    </body>  
+</html>  
