@@ -498,7 +498,7 @@ var Parameter = function() {
     this.densityScale = 10.0;
     this.addSource = 'bottom';
     this.showSimTexture = false;
-    this.halfResolution = true;
+    this.halfResolution = false;
     this.clear = function() {
         clear(velDensityRT[0]);
         clear(velDensityRT[1]);
