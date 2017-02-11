@@ -20,6 +20,29 @@ var HeroesComponent = (function () {
         var _this = this;
         this.heroService.getHeroes().then(function (heroes) { return _this.heroes = heroes; });
     };
+    HeroesComponent.prototype.add = function (name) {
+        var _this = this;
+        name = name.trim();
+        if (!name) {
+            return;
+        }
+        this.heroService.create(name)
+            .then(function (hero) {
+            _this.heroes.push(hero);
+            _this.selectedHero = null;
+        });
+    };
+    HeroesComponent.prototype.delete = function (hero) {
+        var _this = this;
+        this.heroService
+            .delete(hero.id)
+            .then(function () {
+            _this.heroes = _this.heroes.filter(function (h) { return h !== hero; });
+            if (_this.selectedHero === hero) {
+                _this.selectedHero = null;
+            }
+        });
+    };
     HeroesComponent.prototype.ngOnInit = function () {
         this.getHeroes();
     };
