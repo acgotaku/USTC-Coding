@@ -495,7 +495,7 @@ function renderVolume2() {
 
 var Parameter = function() {
     this.iteration = 1;
-    this.densityScale = 10.0;
+    this.densityScale = 3.0;
     this.addSource = 'bottom';
     this.showSimTexture = false;
     this.halfResolution = false;
