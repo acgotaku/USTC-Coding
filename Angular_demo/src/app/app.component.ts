@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 
+import '../styles.css';
+
 @Component({
-  moduleId:module.id,
   selector:'my-app',
   template:`
     <h1>{{title}}</h1>
